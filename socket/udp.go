@@ -7,10 +7,11 @@ import (
 	"github.com/vquelque/Peerster/utils"
 )
 
-const maxBufferSize = 1024
+const MaxBufferSize = 1024
 
 //Socket is a generic interface representing a socket
 type Socket interface {
+	Address() string
 	Send(data []byte, address string)
 	Receive() ([]byte, string)
 	Close()
@@ -18,7 +19,6 @@ type Socket interface {
 
 //UDPSocket implements the socket inteface and represents a UDP socket
 type UDPSocket struct {
-	address    *net.UDPAddr
 	connection *net.UDPConn
 }
 
@@ -27,10 +27,15 @@ func NewUDPSocket(addr string) *UDPSocket {
 	udpAddr := utils.ToUDPAddr(addr)
 	udpConn, err := net.ListenUDP("udp4", udpAddr)
 	if err != nil {
-		log.Fatal("error creating udp connection")
+		log.Fatal(err)
 	}
-	s := &UDPSocket{address: udpAddr, connection: udpConn}
+	s := &UDPSocket{connection: udpConn}
 	return s
+}
+
+// Address returns the formated string address of the socket
+func (socket *UDPSocket) Address() string {
+	return socket.connection.LocalAddr().String()
 }
 
 //Send data via the given socket
@@ -43,7 +48,7 @@ func (socket *UDPSocket) Send(data []byte, addr string) {
 
 //Receive data from the given socket
 func (socket *UDPSocket) Receive() ([]byte, string) {
-	buf := make([]byte, maxBufferSize)
+	buf := make([]byte, MaxBufferSize)
 	bytesRead, source, err := socket.connection.ReadFromUDP(buf)
 	if err != nil {
 		log.Print(err)

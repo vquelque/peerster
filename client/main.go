@@ -19,7 +19,8 @@ func main() {
 
 	addr := fmt.Sprintf("127.0.0.1:%d", *uiPort) //localhost gossiper address
 	udpAddr, err := net.ResolveUDPAddr("udp4", addr)
-	udpConn, err := net.ListenUDP("udp4", udpAddr)
+	udpAddrCli, err := net.ResolveUDPAddr("udp4", "127.0.0.1:0")
+	udpConn, err := net.ListenUDP("udp4", udpAddrCli)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -32,5 +33,8 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	udpConn.WriteToUDP(pkt, udpAddr)
+	_, err = udpConn.WriteToUDP(pkt, udpAddr)
+	if err == nil {
+		log.Print("Packet sent")
+	}
 }

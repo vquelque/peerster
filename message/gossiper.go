@@ -9,15 +9,16 @@ type SimpleMessage struct {
 	Contents      string
 }
 
-func NewSimpleMessage(contents string, originalName string) *SimpleMessage {
+func NewSimpleMessage(contents string, originalName string, relayPeerAddr string) *SimpleMessage {
 	return &SimpleMessage{
-		OriginalName: originalName,
-		Contents:     contents,
+		OriginalName:  originalName,
+		RelayPeerAddr: relayPeerAddr,
+		Contents:      contents,
 	}
 }
 
 //Print simple message
 func (msg *SimpleMessage) String() string {
-	return fmt.Sprintf("SIMPLE MESSAGE origin %s from %s contents %s", msg.OriginalName,
+	return fmt.Sprintf("SIMPLE MESSAGE origin %s from %s contents %s \n", msg.OriginalName,
 		msg.RelayPeerAddr, msg.Contents)
 }
