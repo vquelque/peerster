@@ -4,8 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 	"strings"
-	"time"
 
 	. "github.com/deckarep/golang-set" //for peers
 	"github.com/dedis/protobuf"
@@ -47,7 +47,9 @@ func newGossiper(address string, name string, uiPort int, peers []string, simple
 
 	peersSet := NewSet()
 	for _, peer := range peers {
-		peersSet.Add(peer)
+		if peer != "" {
+			peersSet.Add(peer)
+		}
 	}
 
 	return &Gossiper{
@@ -74,7 +76,6 @@ func (gsp *Gossiper) send(gossipPacket *GossipPacket, addr string) {
 
 func (gsp *Gossiper) broadcastPacket(pkt *GossipPacket, sender string) {
 	for peer := range gsp.peers.Iterator().C {
-		fmt.Printf(peer.(string))
 		if peer != sender {
 			gsp.send(pkt, peer.(string))
 		}
@@ -100,7 +101,6 @@ func (gsp *Gossiper) newForwardedMessage(msg *message.SimpleMessage) *message.Si
 func (gsp *Gossiper) processSimpleMessage(msg *message.SimpleMessage, sender string) {
 	gsp.peers.Add(msg.RelayPeerAddr)
 	fwdMsg := gsp.newForwardedMessage(msg)
-	fmt.Print(msg.String())
 	packet := &GossipPacket{Simple: fwdMsg}
 	// Broadcast to everyone but sender
 	gsp.broadcastPacket(packet, sender)
@@ -121,22 +121,22 @@ func handleIncomingPackets(socket socket.Socket) <-chan *receivedPackets {
 	return out
 }
 
-func (gsp *Gossiper) processMessages(peerMsgs <-chan *receivedPackets, clientRequests <-chan *receivedPackets) {
+func (gsp *Gossiper) processMessages(peerMsgs <-chan *receivedPackets, clientMsgs <-chan *receivedPackets) {
 	for {
 		select {
 		case peerMsg := <-peerMsgs:
 			var gp *GossipPacket = &GossipPacket{}
 			protobuf.Decode(peerMsg.data, gp)
+			fmt.Printf(gp.Simple.String())
 			gsp.processSimpleMessage(gp.Simple, gp.Simple.RelayPeerAddr)
-			// TODO Print peers was changed
-			// g.peers.PrintPeers()
-			fmt.Printf("Peers Changed %s \n", gsp.peers.String())
-		case cliReq := <-clientRequests:
-			var uiMessage *message.UIMessage = &message.UIMessage{}
-			protobuf.Decode(cliReq.data, uiMessage)
-			gp := &GossipPacket{message.NewSimpleMessage(uiMessage.String(), gsp.peersSocket.Address(), gsp.peersSocket.Address())}
+			peersString := gsp.peers.String()
+			fmt.Println(peersString[4 : len(peersString)-1])
+		case cliMsg := <-clientMsgs:
+			var msg *message.Message = &message.Message{}
+			protobuf.Decode(cliMsg.data, msg)
+			fmt.Printf(msg.String())
+			gp := &GossipPacket{message.NewSimpleMessage(msg.Msg, gsp.name, gsp.peersSocket.Address())}
 			gsp.broadcastPacket(gp, gsp.peersSocket.Address())
-			fmt.Printf("Message sent \n")
 		}
 	}
 }
@@ -169,8 +169,11 @@ func main() {
 	gossiper := newGossiper(*gossipAddr, *name, *uiPort, peersAddr, *simple)
 	gossiper.Start()
 
+	exit := make(chan string)
 	for {
-		// Eternal wait
-		time.Sleep(5 * time.Minute)
+		select {
+		case <-exit:
+			os.Exit(0)
+		}
 	}
 }

@@ -25,7 +25,7 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	message := message.UIMessage{Msg: *msg}
+	message := message.Message{Msg: *msg}
 
 	pkt, err := protobuf.Encode(&message)
 
