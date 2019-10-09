@@ -102,8 +102,9 @@ func (gsp *Gossiper) processSimpleMessage(msg *message.SimpleMessage, sender str
 	gsp.peers.Add(msg.RelayPeerAddr)
 	fwdMsg := gsp.newForwardedMessage(msg)
 	packet := &GossipPacket{Simple: fwdMsg}
-	// Broadcast to everyone but sender
-	gsp.broadcastPacket(packet, sender)
+	if gsp.simple { //running in simple mode => broadcast
+		gsp.broadcastPacket(packet, sender)
+	}
 }
 
 ////////////////////////////
@@ -130,7 +131,7 @@ func (gsp *Gossiper) processMessages(peerMsgs <-chan *receivedPackets, clientMsg
 			fmt.Printf(gp.Simple.String())
 			gsp.processSimpleMessage(gp.Simple, gp.Simple.RelayPeerAddr)
 			peersString := gsp.peers.String()
-			fmt.Println(peersString[4 : len(peersString)-1])
+			fmt.Println("PEERS : " + peersString[4:len(peersString)-1])
 		case cliMsg := <-clientMsgs:
 			var msg *message.Message = &message.Message{}
 			protobuf.Decode(cliMsg.data, msg)
@@ -153,7 +154,6 @@ func (gsp *Gossiper) killGossiper() {
 func (gsp *Gossiper) Start() {
 	peerChan := handleIncomingPackets(gsp.peersSocket)
 	clientChan := handleIncomingPackets(gsp.uiSocket)
-
 	go gsp.processMessages(peerChan, clientChan)
 }
 
