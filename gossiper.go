@@ -4,13 +4,14 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
-	"strings"
 
-	. "github.com/deckarep/golang-set" //for peers
 	"github.com/dedis/protobuf"
 	"github.com/vquelque/Peerster/message"
+	"github.com/vquelque/Peerster/peers"
 	"github.com/vquelque/Peerster/socket"
+	"github.com/vquelque/Peerster/vector"
 )
 
 const channelSize = 4
@@ -18,15 +19,18 @@ const channelSize = 4
 // Gossiper structure
 type Gossiper struct {
 	name        string
-	peers       Set
+	peers       *peers.Peers
 	simple      bool
 	peersSocket socket.Socket
 	uiSocket    socket.Socket
+	vectorClock *vector.Vector
 }
 
 // GossipPacket is the only type of packet sent to other peers.
 type GossipPacket struct {
-	Simple *message.SimpleMessage
+	Simple       *message.SimpleMessage
+	RumorMessage *message.RumorMessage
+	StatusPacket *vector.StatusPacket
 }
 
 //encapsulate received messages from peers/client to put in the queue
@@ -41,23 +45,19 @@ type packetToSend struct {
 }
 
 // NewGossiper creates and returns a new gossiper running at given address, port with given name.
-func newGossiper(address string, name string, uiPort int, peers []string, simple bool) *Gossiper {
+func newGossiper(address string, name string, uiPort int, peersList string, simple bool) *Gossiper {
 	peersSocket := socket.NewUDPSocket(address)
 	uiSocket := socket.NewUDPSocket(fmt.Sprintf("127.0.0.1:%d", uiPort))
 
-	peersSet := NewSet()
-	for _, peer := range peers {
-		if peer != "" {
-			peersSet.Add(peer)
-		}
-	}
-
+	peersSet := peers.NewPeersSet(peersList)
+	vectorClock := vector.NewVector()
 	return &Gossiper{
 		name:        name,
 		peers:       peersSet,
 		simple:      simple,
 		peersSocket: peersSocket,
 		uiSocket:    uiSocket,
+		vectorClock: vectorClock,
 	}
 }
 
@@ -83,13 +83,6 @@ func (gsp *Gossiper) broadcastPacket(pkt *GossipPacket, sender string) {
 }
 
 ////////////////////////////
-// Addresses, Peers //
-////////////////////////////
-func formatPeersAddress(peers string) []string {
-	return strings.Split(peers, ",")
-}
-
-////////////////////////////
 // SimpleMessage //
 ////////////////////////////
 func (gsp *Gossiper) newForwardedMessage(msg *message.SimpleMessage) *message.SimpleMessage {
@@ -98,13 +91,57 @@ func (gsp *Gossiper) newForwardedMessage(msg *message.SimpleMessage) *message.Si
 	return msg
 }
 
-func (gsp *Gossiper) processSimpleMessage(msg *message.SimpleMessage, sender string) {
+func (gsp *Gossiper) processSimpleMessage(msg *message.SimpleMessage) {
 	gsp.peers.Add(msg.RelayPeerAddr)
 	fwdMsg := gsp.newForwardedMessage(msg)
 	packet := &GossipPacket{Simple: fwdMsg}
 	if gsp.simple { //running in simple mode => broadcast
-		gsp.broadcastPacket(packet, sender)
+		gsp.broadcastPacket(packet, msg.RelayPeerAddr)
 	}
+}
+
+////////////////////////////
+// RumorMessage //
+////////////////////////////
+func (gsp *Gossiper) processRumorMessage(msg *message.RumorMessage, sender string) {
+	if gsp.vectorClock.NextMessage[sender] >= msg.ID {
+		// forward message to another peer at random because current peer did not have message
+		gsp.peers.Add(sender)
+		gp := &GossipPacket{RumorMessage: msg}
+		randPeer := gsp.peers.PickRandomPeer(sender)
+		if randPeer != "" {
+			gsp.send(gp, randPeer)
+		} else {
+			log.Print("No other peers to forward rumor message")
+		}
+	}
+	if gsp.vectorClock.NextMessageForPeer(sender) == msg.ID {
+		// we were waiting for this message
+		gsp.vectorClock.IncrementMIDForPeer(sender)
+	}
+
+	// acknowledge the packet
+	gsp.sendStatusPacket(sender)
+}
+
+////////////////////////////
+// status packet //
+////////////////////////////
+func (gsp *Gossiper) sendStatusPacket(address string) {
+	sp := gsp.vectorClock.StatusPacket()
+	gp := &GossipPacket{nil, nil, sp}
+	gsp.send(gp, address)
+}
+
+func (gsp *Gossiper) processStatusPacket(sp *vector.StatusPacket, sender string) {
+	same, want, send := gsp.vectorClock.CompareWithStatusPacket(sp)
+	if same && rand.Intn(2) == 0 {
+		peer := gsp.peers.PickRandomPeer(sender)
+		if peer != "" {
+
+		}
+	}
+
 }
 
 ////////////////////////////
@@ -128,16 +165,39 @@ func (gsp *Gossiper) processMessages(peerMsgs <-chan *receivedPackets, clientMsg
 		case peerMsg := <-peerMsgs:
 			var gp *GossipPacket = &GossipPacket{}
 			protobuf.Decode(peerMsg.data, gp)
-			fmt.Printf(gp.Simple.String())
-			gsp.processSimpleMessage(gp.Simple, gp.Simple.RelayPeerAddr)
-			peersString := gsp.peers.String()
-			fmt.Println("PEERS : " + peersString[4:len(peersString)-1])
+			switch {
+			case gp.Simple != nil:
+				// received a simple message
+				fmt.Println(gp.Simple.String())
+				gsp.processSimpleMessage(gp.Simple)
+				fmt.Println(gsp.peers.PrintPeers())
+			case gp.RumorMessage != nil:
+				// received a rumorMessage
+				fmt.Println(gp.RumorMessage.String())
+				gsp.processRumorMessage(gp.RumorMessage, peerMsg.sender)
+			case gp.StatusPacket != nil:
+				gsp.processStatusPacket(gp.StatusPacket, sender)
+			default:
+				log.Print("Error : more than one message in GossipPacket ")
+			}
 		case cliMsg := <-clientMsgs:
 			var msg *message.Message = &message.Message{}
 			protobuf.Decode(cliMsg.data, msg)
 			fmt.Printf(msg.String())
-			gp := &GossipPacket{message.NewSimpleMessage(msg.Msg, gsp.name, gsp.peersSocket.Address())}
-			gsp.broadcastPacket(gp, gsp.peersSocket.Address())
+			gp := &GossipPacket{message.NewSimpleMessage(msg.Msg, gsp.name, gsp.peersSocket.Address()), nil, nil}
+			if gsp.simple {
+				//broadcast packet
+				gsp.broadcastPacket(gp, gsp.peersSocket.Address())
+			} else {
+				//send to random peer
+				randPeer := gsp.peers.PickRandomPeer("")
+				if randPeer != "" {
+					gsp.send(gp, randPeer)
+				} else {
+					log.Print("No other peers to forward rumor message")
+				}
+			}
+
 		}
 	}
 }
@@ -161,12 +221,11 @@ func main() {
 	uiPort := flag.Int("UIPort", 8080, "Port for the UI client (default 8080)")
 	gossipAddr := flag.String("gossipAddr", "", "ip:port for the gossiper")
 	name := flag.String("name", "", "name of the gossiper")
-	peers := flag.String("peers", "", "comma separated list of peers of the form ip:port")
+	peersList := flag.String("peers", "", "comma separated list of peers of the form ip:port")
 	simple := flag.Bool("simple", false, "run gossiper in simple broadcast mode")
 	flag.Parse()
 
-	peersAddr := formatPeersAddress(*peers)
-	gossiper := newGossiper(*gossipAddr, *name, *uiPort, peersAddr, *simple)
+	gossiper := newGossiper(*gossipAddr, *name, *uiPort, *peersList, *simple)
 	gossiper.Start()
 
 	exit := make(chan string)
