@@ -43,13 +43,15 @@ func (peersSet *Peers) PickRandomPeer(sender string) string {
 		return ""
 	}
 	randPeer := peersSet.peers.Pop()
+	defer peersSet.peers.Add(randPeer)
 	if randPeer == sender {
-		if peersSet.peers.Cardinality() > 1 {
+		if peersSet.peers.Cardinality() > 0 {
 			randPeer2 := peersSet.peers.Pop()
 			peersSet.peers.Add(randPeer2)
+			log.Println(randPeer2)
 			return randPeer2.(string)
 		}
-		if peersSet.peers.Cardinality() == 1 {
+		if peersSet.peers.Cardinality() == 0 {
 			return "" //no other peers known
 		}
 		if peersSet.peers.Cardinality() < 0 {
@@ -57,6 +59,5 @@ func (peersSet *Peers) PickRandomPeer(sender string) string {
 			return ""
 		}
 	}
-	peersSet.peers.Add(randPeer)
 	return randPeer.(string)
 }

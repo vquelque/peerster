@@ -124,8 +124,9 @@ func (gsp *Gossiper) processRumorMessage(msg *message.RumorMessage, sender strin
 		// we were waiting for this message
 		//pick random peer and rumormonger
 		randPeer := gsp.peers.PickRandomPeer(sender)
+		log.Println(gsp.peers.PrintPeers())
 		if randPeer != "" {
-			gsp.sendRumorMessage(msg, randPeer)
+			gsp.sendRumorMessage(msg, randPeer, sender)
 			fmt.Println("MONGERING with", randPeer)
 			gsp.rumormonger(msg, randPeer)
 		} else {
@@ -149,8 +150,8 @@ func (gsp *Gossiper) rumormonger(rumor *message.RumorMessage, addr string) {
 		for {
 			select {
 			case <-timer.C:
-				// TIMEOUT
 				gsp.coinFlip(rumor, addr)
+				fmt.Print("TIMEOUT")
 				return
 			case ack := <-channel:
 				same, _, toSend := gsp.vectorClock.CompareWithStatusPacket(ack)
@@ -161,6 +162,7 @@ func (gsp *Gossiper) rumormonger(rumor *message.RumorMessage, addr string) {
 				} else {
 					// TODO REMOVE THIS PRINT
 					log.Print("START SYNC")
+					log.Print(toSend)
 					gsp.synchronizeWithPeer(toSend, addr)
 					// TODO maybe start a new routine to reset timer ?
 				}
@@ -171,8 +173,11 @@ func (gsp *Gossiper) rumormonger(rumor *message.RumorMessage, addr string) {
 }
 
 // store rumor message in DB + increment MID for peer + send it to the peer
-func (gsp *Gossiper) sendRumorMessage(msg *message.RumorMessage, peerAddr string) {
-	gsp.vectorClock.IncrementMIDForPeer(peerAddr)
+func (gsp *Gossiper) sendRumorMessage(msg *message.RumorMessage, peerAddr string, sender string) {
+	if sender != "" {
+		//not from local client
+		gsp.vectorClock.IncrementMIDForPeer(sender)
+	}
 	gsp.rumors.StoreRumor(msg)
 	gp := &GossipPacket{RumorMessage: msg}
 	gsp.send(gp, peerAddr)
@@ -188,8 +193,7 @@ func (gsp *Gossiper) coinFlip(rumor *message.RumorMessage, sender string) {
 			fmt.Printf("FLIPPED COIN sending rumor to %s\n", peer)
 			gsp.rumormonger(rumor, peer) // waiting for ack
 			//sending rumor
-			gp := &GossipPacket{RumorMessage: rumor}
-			gsp.send(gp, peer)
+			gsp.sendRumorMessage(rumor, peer, sender)
 		}
 	}
 }
@@ -204,7 +208,8 @@ func (gsp *Gossiper) synchronizeWithPeer(toSend []vector.PeerStatus, peerAddr st
 		gp := &GossipPacket{RumorMessage: rumorToSend}
 		gsp.send(gp, peerAddr)
 		fmt.Printf("MONGERING with %s\n", peerAddr)
-		// TODO START NEW RUMORMOREGING ROUTINE ??
+		//TODO RUMORMONGER YES OR NO ?
+		//gsp.rumormonger(rumorToSend, peerAddr)
 	}
 }
 
@@ -269,6 +274,7 @@ func (gsp *Gossiper) processMessages(peerMsgs <-chan *receivedPackets, clientMsg
 				gsp.processStatusPacket(gp.StatusPacket, peerMsg.sender)
 			default:
 				log.Print("Error : more than one message in GossipPacket ")
+				log.Printf("%s,%s,%s", gp.Simple, gp.RumorMessage, gp.StatusPacket)
 			}
 		case cliMsg := <-clientMsgs:
 			var msg *message.Message = &message.Message{}
@@ -283,7 +289,7 @@ func (gsp *Gossiper) processMessages(peerMsgs <-chan *receivedPackets, clientMsg
 				//send to random peer
 				randPeer := gsp.peers.PickRandomPeer("")
 				if randPeer != "" {
-					gsp.sendRumorMessage(rumorMsg, randPeer)
+					gsp.sendRumorMessage(rumorMsg, randPeer, "")
 					gsp.rumormonger(rumorMsg, randPeer)
 				} else {
 					log.Print("No other peers to forward rumor message")

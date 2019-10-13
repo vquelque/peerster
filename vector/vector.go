@@ -2,6 +2,7 @@ package vector
 
 import (
 	"fmt"
+	"log"
 	"sync"
 )
 
@@ -55,6 +56,8 @@ func (vec *Vector) StatusPacket() *StatusPacket {
 
 // https://siongui.github.io/2018/03/14/go-set-difference-of-two-arrays/
 func (vec *Vector) CompareWithStatusPacket(sp *StatusPacket) (same bool, want []PeerStatus, toSend []PeerStatus) {
+	log.Printf("CURR PEER STAT : %s", vec.nextMessage)
+	log.Printf("OTHER PEER STAT : %s", sp.Want)
 	toSend = make([]PeerStatus, 0)
 	want = make([]PeerStatus, 0)
 	same = true
@@ -94,7 +97,7 @@ func (vec *Vector) CompareWithStatusPacket(sp *StatusPacket) (same bool, want []
 
 //Prints a PeerStatus message
 func (ps *PeerStatus) String() string {
-	return fmt.Sprintf("Identifier : %s, NextID : %d \n", ps.Identifier, ps.NextID)
+	return fmt.Sprintf("Identifier : %s, NextID : %d", ps.Identifier, ps.NextID)
 }
 
 //Prints a StatusMessage
