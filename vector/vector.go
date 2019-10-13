@@ -55,14 +55,13 @@ func (vec *Vector) StatusPacket() *StatusPacket {
 
 // https://siongui.github.io/2018/03/14/go-set-difference-of-two-arrays/
 func (vec *Vector) CompareWithStatusPacket(sp *StatusPacket) (same bool, want []PeerStatus, toSend []PeerStatus) {
-	want = make([]PeerStatus, 0)
 	toSend = make([]PeerStatus, 0)
+	want = make([]PeerStatus, 0)
 	same = true
 	vec.peersLock.RLock()
-	defer vec.peersLock.Unlock()
+	defer vec.peersLock.RUnlock()
 	// we use a map to compute the difference between arrays
 	m := make(map[string]bool)
-
 	// first pass : compute difference with peers contained in other peer statusVector
 	for _, status := range sp.Want {
 		m[status.Identifier] = true
@@ -71,14 +70,14 @@ func (vec *Vector) CompareWithStatusPacket(sp *StatusPacket) (same bool, want []
 		if found {
 			if next > status.NextID {
 				same = false
-				toSend = append(toSend, status)
+				want = append(want, status)
 			} else if next < status.NextID {
 				same = false
-				want = append(want, ps)
+				toSend = append(toSend, ps)
 			}
 		} else if status.NextID > 0 {
 			same = false
-			want = append(want, ps)
+			toSend = append(toSend, ps)
 		}
 	}
 	// second pass : add the peers that are only in this status vector but not in the other one.
@@ -86,7 +85,7 @@ func (vec *Vector) CompareWithStatusPacket(sp *StatusPacket) (same bool, want []
 		if !m[peer] {
 			same = false
 			ps := PeerStatus{peer, 0}
-			toSend = append(toSend, ps)
+			want = append(want, ps)
 		}
 	}
 

@@ -9,5 +9,5 @@ type Message struct {
 
 //Print client message
 func (msg *Message) String() string {
-	return fmt.Sprintf("CLIENT MESSAGE %s\n", msg.Msg)
+	return fmt.Sprintf("CLIENT MESSAGE %s", msg.Msg)
 }

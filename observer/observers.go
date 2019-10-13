@@ -12,15 +12,17 @@ type Observer struct {
 }
 
 func Init() *Observer {
-	obs := &Observer{make(map[string]chan *vector.StatusPacket)}
+	lock := &sync.RWMutex{}
+	obs := &Observer{make(map[string]chan *vector.StatusPacket), lock}
 	return obs
 }
 
-func (obs *Observer) WaitingForAck(sender string) {
+func (obs *Observer) Register(sender string) chan *vector.StatusPacket {
 	obs.lock.Lock()
 	defer obs.lock.Unlock()
 	ackChan := make(chan *vector.StatusPacket)
 	obs.waitingForAck[sender] = ackChan
+	return ackChan
 }
 
 func (obs *Observer) Unregister(sender string) {
@@ -31,4 +33,14 @@ func (obs *Observer) Unregister(sender string) {
 		close(ackChan)
 		obs.waitingForAck[sender] = nil
 	}
+}
+
+func (obs *Observer) GetObserver(peer string) chan *vector.StatusPacket {
+	obs.lock.RLock()
+	defer obs.lock.RUnlock()
+	ackChan, found := obs.waitingForAck[peer]
+	if found {
+		return ackChan
+	}
+	return nil
 }

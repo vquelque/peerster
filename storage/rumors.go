@@ -28,7 +28,7 @@ func (storage *Storage) StoreRumor(rumor *message.RumorMessage) {
 	}
 }
 
-func (storage *Storage) Rumor(peer string, rumorId uint32) *message.RumorMessage {
+func (storage *Storage) GetRumor(peer string, rumorId uint32) *message.RumorMessage {
 	storage.lock.RLock()
 	defer storage.lock.RUnlock()
 	archive, found := storage.rumors[peer]
