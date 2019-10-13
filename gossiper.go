@@ -116,9 +116,9 @@ func (gsp *Gossiper) processSimpleMessage(msg *message.SimpleMessage) {
 // RumorMessage //
 ////////////////////////////
 func (gsp *Gossiper) processRumorMessage(msg *message.RumorMessage, sender string) {
-	fmt.Println(msg.PrintRumor(sender))
 	//if sender is nil then it is a client message
 	if sender != "" {
+		fmt.Println(msg.PrintRumor(sender))
 		gsp.peers.Add(sender)
 		// acknowledge the packet
 		defer gsp.sendStatusPacket(sender)
@@ -159,7 +159,6 @@ func (gsp *Gossiper) rumormonger(rumor *message.RumorMessage, addr string) {
 			case ack := <-channel:
 				same, _, _ := gsp.vectorClock.CompareWithStatusPacket(ack)
 				if same {
-					fmt.Printf("IN SYNC WITH %s \n", addr)
 					gsp.coinFlip(rumor, addr)
 					return
 				}
@@ -212,23 +211,23 @@ func (gsp *Gossiper) synchronizeWithPeer(toAsk []vector.PeerStatus, toSend []vec
 ////////////////////////////
 func (gsp *Gossiper) sendStatusPacket(addr string) {
 	sp := gsp.vectorClock.StatusPacket()
-	gp := &GossipPacket{nil, nil, sp}
+	gp := &GossipPacket{nil, nil, &sp}
 	gsp.send(gp, addr)
 }
 
 func (gsp *Gossiper) processStatusPacket(sp *vector.StatusPacket, sender string) {
 	fmt.Print(sp.String())
-	same, toAsk, toSend := gsp.vectorClock.CompareWithStatusPacket(sp)
+	same, toAsk, toSend := gsp.vectorClock.CompareWithStatusPacket(*sp)
 
 	if same {
-		fmt.Printf("IN SYNC WITH %s", sender)
+		fmt.Printf("IN SYNC WITH %s \n", sender)
 		return
 	}
 	log.Print("START SYNC")
 	observer := gsp.waitingForAck.GetObserver(sender)
 	if observer != nil {
 		log.Print("OBSERVER FOUND")
-		observer <- sp
+		observer <- *sp
 	}
 	gsp.synchronizeWithPeer(toAsk, toSend, sender)
 
@@ -286,14 +285,8 @@ func (gsp *Gossiper) processMessages(peerMsgs <-chan *receivedPackets, clientMsg
 				mID := gsp.vectorClock.NextMessageForPeer(gsp.name)
 				rumorMsg := message.NewRumorMessage(gsp.name, mID, msg.Msg)
 				//send to random peer
-				randPeer := gsp.peers.PickRandomPeer("")
-				if randPeer != "" {
-					gsp.processRumorMessage(rumorMsg, "")
-				} else {
-					log.Print("No other peers to forward rumor message")
-				}
+				gsp.processRumorMessage(rumorMsg, "")
 			}
-
 		}
 	}
 }

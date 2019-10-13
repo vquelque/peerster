@@ -41,8 +41,8 @@ func (vec *Vector) IncrementMIDForPeer(peer string) uint32 {
 	return vec.nextMessage[peer]
 }
 
-func (vec *Vector) StatusPacket() *StatusPacket {
-	sp := &StatusPacket{}
+func (vec *Vector) StatusPacket() StatusPacket {
+	sp := StatusPacket{}
 	sp.Want = make([]PeerStatus, 0)
 	vec.peersLock.RLock()
 	defer vec.peersLock.RUnlock()
@@ -53,7 +53,7 @@ func (vec *Vector) StatusPacket() *StatusPacket {
 	return sp
 }
 
-func (vec *Vector) UpdateVectorClock(sp *StatusPacket) {
+func (vec *Vector) UpdateVectorClock(sp StatusPacket) {
 	vec.peersLock.Lock()
 	defer vec.peersLock.Unlock()
 	for _, peerStatus := range sp.Want {
@@ -66,7 +66,7 @@ func (vec *Vector) UpdateVectorClock(sp *StatusPacket) {
 }
 
 // https://siongui.github.io/2018/03/14/go-set-difference-of-two-arrays/
-func (vec *Vector) CompareWithStatusPacket(otherPeerStatus *StatusPacket) (same bool, toAsk []PeerStatus, toSend []PeerStatus) {
+func (vec *Vector) CompareWithStatusPacket(otherPeerStatus StatusPacket) (same bool, toAsk []PeerStatus, toSend []PeerStatus) {
 	toSend = make([]PeerStatus, 0)
 	toAsk = make([]PeerStatus, 0)
 

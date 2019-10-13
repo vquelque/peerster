@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/vquelque/Peerster/message"
@@ -22,9 +23,10 @@ func (storage *Storage) StoreRumor(rumor *message.RumorMessage) {
 	defer storage.lock.Unlock()
 	origin := rumor.Origin
 	archive, _ := storage.rumors[origin]
-	if rumor.ID == uint32(len(archive)-1) {
+	if rumor.ID == uint32(len(archive)) {
 		// it is the good message
 		archive = append(archive, *rumor)
+		storage.rumors[origin] = archive
 	}
 }
 
@@ -32,7 +34,10 @@ func (storage *Storage) GetRumor(peer string, rumorId uint32) *message.RumorMess
 	storage.lock.RLock()
 	defer storage.lock.RUnlock()
 	archive, found := storage.rumors[peer]
-	if !found || rumorId > uint32(len(archive)-1) {
+	fmt.Println(rumorId)
+	fmt.Println(peer)
+	fmt.Println(found)
+	if !found || rumorId > uint32(len(archive)) {
 		// we did not store this rumor previously => problem.
 		return nil
 	}
