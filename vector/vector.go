@@ -2,7 +2,6 @@ package vector
 
 import (
 	"fmt"
-	"log"
 	"sync"
 )
 
@@ -54,45 +53,53 @@ func (vec *Vector) StatusPacket() *StatusPacket {
 	return sp
 }
 
+func (vec *Vector) UpdateVectorClock(sp *StatusPacket) {
+	vec.peersLock.Lock()
+	defer vec.peersLock.Unlock()
+	for _, peerStatus := range sp.Want {
+		currID := vec.nextMessage[peerStatus.Identifier]
+		statusID := peerStatus.NextID
+		if statusID > currID {
+			vec.nextMessage[peerStatus.Identifier] = statusID
+		}
+	}
+}
+
 // https://siongui.github.io/2018/03/14/go-set-difference-of-two-arrays/
-func (vec *Vector) CompareWithStatusPacket(sp *StatusPacket) (same bool, want []PeerStatus, toSend []PeerStatus) {
-	log.Printf("CURR PEER STAT : %s", vec.nextMessage)
-	log.Printf("OTHER PEER STAT : %s", sp.Want)
+func (vec *Vector) CompareWithStatusPacket(otherPeerStatus *StatusPacket) (same bool, toAsk []PeerStatus, toSend []PeerStatus) {
 	toSend = make([]PeerStatus, 0)
-	want = make([]PeerStatus, 0)
-	same = true
+	toAsk = make([]PeerStatus, 0)
+
 	vec.peersLock.RLock()
 	defer vec.peersLock.RUnlock()
 	// we use a map to compute the difference between arrays
 	m := make(map[string]bool)
+
 	// first pass : compute difference with peers contained in other peer statusVector
-	for _, status := range sp.Want {
+	for _, status := range otherPeerStatus.Want {
 		m[status.Identifier] = true
 		next, found := vec.nextMessage[status.Identifier]
 		ps := PeerStatus{status.Identifier, next}
+
 		if found {
 			if next > status.NextID {
-				same = false
-				want = append(want, status)
+				toSend = append(toSend, status)
 			} else if next < status.NextID {
-				same = false
-				toSend = append(toSend, ps)
+				toAsk = append(toAsk, ps)
 			}
 		} else if status.NextID > 0 {
-			same = false
-			toSend = append(toSend, ps)
+			toAsk = append(toAsk, ps)
 		}
 	}
 	// second pass : add the peers that are only in this status vector but not in the other one.
 	for peer := range vec.nextMessage {
 		if !m[peer] {
-			same = false
 			ps := PeerStatus{peer, 0}
-			want = append(want, ps)
+			toSend = append(toSend, ps)
 		}
 	}
-
-	return same, want, toSend
+	same = len(toSend) == 0 && len(toAsk) == 0
+	return same, toAsk, toSend
 }
 
 //Prints a PeerStatus message
