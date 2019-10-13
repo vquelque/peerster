@@ -166,7 +166,6 @@ func (gsp *Gossiper) listenForAck(rumor *message.RumorMessage, peerAddr string) 
 			if same {
 				gsp.coinFlip(rumor, peerAddr)
 			}
-			//TODO update peers state ?
 			return
 		}
 	}
@@ -181,7 +180,8 @@ func (gsp *Gossiper) sendRumorMessage(msg *message.RumorMessage, peerAddr string
 // coinFlip tosses a coin. If head, we rumormonger the rumor to a random peer. We exclude the sender
 // from the randomly chosen peer.
 func (gsp *Gossiper) coinFlip(rumor *message.RumorMessage, sender string) {
-	if rand.Intn(2) == 0 {
+	head := rand.Int() % 2
+	if head == 0 {
 		// exclude the sender of the rumor from the set where we pick our random peer to prevent a loop.
 		peer := gsp.peers.PickRandomPeer(sender)
 		if peer != "" {
@@ -217,16 +217,17 @@ func (gsp *Gossiper) processStatusPacket(sp *vector.StatusPacket, sender string)
 	fmt.Print(sp.StringStatusWithSender(sender))
 	same, toAsk, toSend := gsp.vectorClock.CompareWithStatusPacket(*sp)
 
-	if same {
-		fmt.Printf("IN SYNC WITH %s \n", sender)
-		return
-	}
-	// log.Print("START SYNC")
 	observer := gsp.waitingForAck.GetObserver(sender)
 	if observer != nil {
 		// log.Print("OBSERVER FOUND")
 		observer <- *sp
 	}
+
+	if same {
+		fmt.Printf("IN SYNC WITH %s \n", sender)
+		return
+	}
+
 	gsp.synchronizeWithPeer(toAsk, toSend, sender)
 
 }
@@ -268,7 +269,6 @@ func (gsp *Gossiper) processMessages(peerMsgs <-chan *receivedPackets, clientMsg
 				gsp.processStatusPacket(gp.StatusPacket, peerMsg.sender)
 			default:
 				log.Print("Error : more than one message or 3 NIL in GossipPacket")
-				log.Printf("%s,%s,%s", gp.Simple, gp.RumorMessage, gp.StatusPacket)
 			}
 		case cliMsg := <-clientMsgs:
 			var msg *message.Message = &message.Message{}

@@ -104,7 +104,7 @@ func (vec *Vector) CompareWithStatusPacket(otherPeerStatus StatusPacket) (same b
 
 //Prints a PeerStatus message
 func (ps *PeerStatus) String() string {
-	return fmt.Sprintf("peer %s nextID %d", ps.Identifier, ps.NextID)
+	return fmt.Sprintf("peer %s nextID %d", ps.Identifier, ps.NextID+1)
 }
 
 //Prints a StatusMessage
