@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/vquelque/Peerster/message"
@@ -34,9 +33,6 @@ func (storage *Storage) GetRumor(peer string, rumorId uint32) *message.RumorMess
 	storage.lock.RLock()
 	defer storage.lock.RUnlock()
 	archive, found := storage.rumors[peer]
-	fmt.Println(rumorId)
-	fmt.Println(peer)
-	fmt.Println(found)
 	if !found || rumorId > uint32(len(archive)) {
 		// we did not store this rumor previously => problem.
 		return nil
