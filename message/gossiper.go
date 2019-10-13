@@ -34,17 +34,13 @@ func NewRumorMessage(origin string, ID uint32, text string) *RumorMessage {
 	}
 }
 
+//Prints a RumorMessage
 func (msg *RumorMessage) PrintRumor(relay string) string {
-	return fmt.Sprintf("RUMOR  origin %s from %s ID %d contents %s", msg.Origin, relay, msg.ID, msg.Text)
+	return fmt.Sprintf("RUMOR origin %s from %s ID %d contents %s", msg.Origin, relay, msg.ID, msg.Text)
 }
 
 //Prints simpleMessage.
 func (msg *SimpleMessage) String() string {
 	return fmt.Sprintf("SIMPLE MESSAGE origin %s from %s contents %s", msg.OriginalName,
 		msg.RelayPeerAddr, msg.Contents)
-}
-
-//Prints a RumorMessage
-func (msg *RumorMessage) String() string {
-	return fmt.Sprintf("RUMOR  origin %s ID %d contents %s", msg.Origin, msg.ID, msg.Text)
 }

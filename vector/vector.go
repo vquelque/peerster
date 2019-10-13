@@ -104,12 +104,12 @@ func (vec *Vector) CompareWithStatusPacket(otherPeerStatus StatusPacket) (same b
 
 //Prints a PeerStatus message
 func (ps *PeerStatus) String() string {
-	return fmt.Sprintf("Identifier : %s, NextID : %d", ps.Identifier, ps.NextID)
+	return fmt.Sprintf("peer %s nextID %d", ps.Identifier, ps.NextID)
 }
 
 //Prints a StatusMessage
-func (msg *StatusPacket) String() string {
-	str := fmt.Sprintf("STATUS MESSAGE received \n")
+func (msg *StatusPacket) StringStatusWithSender(sender string) string {
+	str := fmt.Sprintf("STATUS from %s \n", sender)
 	for _, element := range msg.Want {
 		str += fmt.Sprintf("%s \n", element.String())
 	}
