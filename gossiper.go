@@ -142,13 +142,14 @@ func (gsp *Gossiper) processRumorMessage(msg *message.RumorMessage, sender strin
 	}
 }
 
-// handle the rumormongering process and callback of eventual ack or timeout
+// handle the rumormongering process and launch go routine that listens for ack or timeout
 func (gsp *Gossiper) rumormonger(rumor *message.RumorMessage, peerAddr string) {
 	go gsp.listenForAck(rumor, peerAddr)
 	gsp.sendRumorMessage(rumor, peerAddr)
 	fmt.Printf("MONGERING with %s \n", peerAddr)
 }
 
+//listen and handle ack or timeout
 func (gsp *Gossiper) listenForAck(rumor *message.RumorMessage, peerAddr string) {
 	gsp.active.Add(1)
 	// register this channel inside the map of channels waiting for an ack (observer).
@@ -167,8 +168,7 @@ func (gsp *Gossiper) listenForAck(rumor *message.RumorMessage, peerAddr string) 
 			gsp.coinFlip(rumor, peerAddr)
 			return
 		case ack := <-channel:
-			same, _, _ := gsp.vectorClock.CompareWithStatusPacket(ack)
-			if same {
+			if ack.Same {
 				gsp.coinFlip(rumor, peerAddr)
 			}
 			return
@@ -176,7 +176,7 @@ func (gsp *Gossiper) listenForAck(rumor *message.RumorMessage, peerAddr string) 
 	}
 }
 
-// send rumorMessage
+// send rumorMessage to peerAddr
 func (gsp *Gossiper) sendRumorMessage(msg *message.RumorMessage, peerAddr string) {
 	gp := GossipPacket{nil, msg, nil}
 	gsp.send(&gp, peerAddr)
@@ -197,7 +197,11 @@ func (gsp *Gossiper) coinFlip(rumor *message.RumorMessage, sender string) {
 }
 
 // Check if we are in sync with peer. Else, send the missing messages to the peer.
-func (gsp *Gossiper) synchronizeWithPeer(toAsk []vector.PeerStatus, toSend []vector.PeerStatus, peerAddr string) {
+func (gsp *Gossiper) synchronizeWithPeer(same bool, toAsk []vector.PeerStatus, toSend []vector.PeerStatus, peerAddr string) {
+	if same {
+		fmt.Printf("IN SYNC WITH %s \n", peerAddr)
+		return
+	}
 	if len(toSend) > 0 {
 		// we have new messages to send to the peer : start mongering
 		//get the rumor we need to send from storage
@@ -222,18 +226,13 @@ func (gsp *Gossiper) processStatusPacket(sp *vector.StatusPacket, sender string)
 	fmt.Print(sp.StringStatusWithSender(sender))
 	same, toAsk, toSend := gsp.vectorClock.CompareWithStatusPacket(*sp)
 
-	observer := gsp.waitingForAck.GetObserver(sender)
-	if observer != nil {
+	observerChan := gsp.waitingForAck.GetObserver(sender)
+	if observerChan != nil {
 		// log.Print("OBSERVER FOUND")
-		observer <- *sp
+		observer.SendACKToChannel(observerChan, sp, same)
 	}
 
-	if same {
-		fmt.Printf("IN SYNC WITH %s \n", sender)
-		return
-	}
-
-	gsp.synchronizeWithPeer(toAsk, toSend, sender)
+	gsp.synchronizeWithPeer(same, toAsk, toSend, sender)
 
 }
 
