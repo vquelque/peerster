@@ -11,29 +11,33 @@ type PeerStatus struct {
 	NextID     uint32
 }
 
-//StatusMessage is the type of message sent by a particular peer when receiving a message used
-// to acknowledge all the messages it has received so far.
+//StatusPacket is exchanged between peers to exchange their vector clocks.
 type StatusPacket struct {
 	Want []PeerStatus
 }
+
+// Vector clock.
+// We use ID for messages starting at 0
 type Vector struct {
 	nextMessage map[string]uint32
 	peersLock   sync.RWMutex
 }
 
+// NewVector returns a new empty vector clocl
 func NewVector() *Vector {
 	vec := &Vector{}
 	vec.nextMessage = make(map[string]uint32)
 	return vec
 }
 
-// GetNextMessagen returns next message id for given peer name.
+// NextMessageForPeer returns next message id for given peer name.
 func (vec *Vector) NextMessageForPeer(peer string) uint32 {
 	vec.peersLock.RLock()
 	defer vec.peersLock.RUnlock()
 	return vec.nextMessage[peer]
 }
 
+// Increments message ID for the given peer.
 func (vec *Vector) IncrementMIDForPeer(peer string) uint32 {
 	vec.peersLock.Lock()
 	defer vec.peersLock.Unlock()
@@ -41,6 +45,7 @@ func (vec *Vector) IncrementMIDForPeer(peer string) uint32 {
 	return vec.nextMessage[peer]
 }
 
+// StatusPacket returns the status packet for a given peer.
 func (vec *Vector) StatusPacket() StatusPacket {
 	sp := StatusPacket{}
 	sp.Want = make([]PeerStatus, 0)
@@ -53,6 +58,7 @@ func (vec *Vector) StatusPacket() StatusPacket {
 	return sp
 }
 
+// UpdateVectorClock updates the whole vector clock with the given status packet.
 func (vec *Vector) UpdateVectorClock(sp StatusPacket) {
 	vec.peersLock.Lock()
 	defer vec.peersLock.Unlock()
@@ -65,6 +71,8 @@ func (vec *Vector) UpdateVectorClock(sp StatusPacket) {
 	}
 }
 
+// CompareWithStatusPacket compares and returns the difference between
+// the current vector clock and the status paket given as arguemnt.
 // https://siongui.github.io/2018/03/14/go-set-difference-of-two-arrays/
 func (vec *Vector) CompareWithStatusPacket(otherPeerStatus StatusPacket) (same bool, toAsk []PeerStatus, toSend []PeerStatus) {
 	toSend = make([]PeerStatus, 0)
@@ -107,7 +115,7 @@ func (ps *PeerStatus) String() string {
 	return fmt.Sprintf("peer %s nextID %d", ps.Identifier, ps.NextID+1)
 }
 
-//Prints a StatusMessage
+//StringStatusWithSender prints a StatusMessage with its sender
 func (msg *StatusPacket) StringStatusWithSender(sender string) string {
 	str := fmt.Sprintf("STATUS from %s \n", sender)
 	for _, element := range msg.Want {

@@ -49,11 +49,6 @@ type receivedPackets struct {
 	sender string
 }
 
-type packetToSend struct {
-	data     []byte
-	adddress string
-}
-
 // NewGossiper creates and returns a new gossiper running at given address, port with given name.
 func newGossiper(address string, name string, uiPort int, peersList string, simple bool, antiEntropyTimer int) *Gossiper {
 	peersSocket := socket.NewUDPSocket(address)
@@ -84,7 +79,7 @@ func newGossiper(address string, name string, uiPort int, peersList string, simp
 // Packets, GossipPacket //
 ////////////////////////////
 
-//serialize with protobuf and send the gossipPacket to the provided UDP addr using the provided gossiper
+// serialize with protobuf and send the gossipPacket to the provided UDP addr using the provided gossiper
 func (gsp *Gossiper) send(gossipPacket *GossipPacket, addr string) {
 	pkt, err := protobuf.Encode(gossipPacket)
 	if err != nil {
@@ -122,6 +117,7 @@ func (gsp *Gossiper) processSimpleMessage(msg *message.SimpleMessage) {
 ////////////////////////////
 // RumorMessage //
 ////////////////////////////
+// Procecces incoming rumor message.
 func (gsp *Gossiper) processRumorMessage(msg *message.RumorMessage, sender string) {
 	//if sender is nil then it is a client message
 	if sender != "" {
@@ -149,14 +145,14 @@ func (gsp *Gossiper) processRumorMessage(msg *message.RumorMessage, sender strin
 	}
 }
 
-// handle the rumormongering process and launch go routine that listens for ack or timeout
+// Handle the rumormongering process and launch go routine that listens for ack or timeout.
 func (gsp *Gossiper) rumormonger(rumor *message.RumorMessage, peerAddr string) {
 	go gsp.listenForAck(rumor, peerAddr)
 	gsp.sendRumorMessage(rumor, peerAddr)
 	fmt.Printf("MONGERING with %s \n", peerAddr)
 }
 
-//listen and handle ack or timeout
+// Listen and handle ack or timeout.
 func (gsp *Gossiper) listenForAck(rumor *message.RumorMessage, peerAddr string) {
 	gsp.active.Add(1)
 	// register this channel inside the map of channels waiting for an ack (observer).
@@ -183,13 +179,13 @@ func (gsp *Gossiper) listenForAck(rumor *message.RumorMessage, peerAddr string) 
 	}
 }
 
-// send rumorMessage to peerAddr
+// Send rumor to peerAddr.
 func (gsp *Gossiper) sendRumorMessage(msg *message.RumorMessage, peerAddr string) {
 	gp := GossipPacket{nil, msg, nil}
 	gsp.send(&gp, peerAddr)
 }
 
-// coinFlip tosses a coin. If head, we rumormonger the rumor to a random peer. We exclude the sender
+// CoinFlip tosses a coin. If head, we rumormonger the rumor to a random peer. We exclude the sender
 // from the randomly chosen peer.
 func (gsp *Gossiper) coinFlip(rumor *message.RumorMessage, sender string) {
 	head := rand.Int() % 2
@@ -223,12 +219,14 @@ func (gsp *Gossiper) synchronizeWithPeer(same bool, toAsk []vector.PeerStatus, t
 ////////////////////////////
 // status packet //
 ////////////////////////////
+// Sends a status packet to the given address.
 func (gsp *Gossiper) sendStatusPacket(addr string) {
 	sp := gsp.vectorClock.StatusPacket()
 	gp := &GossipPacket{nil, nil, &sp}
 	gsp.send(gp, addr)
 }
 
+// Processes incoming status packets.
 func (gsp *Gossiper) processStatusPacket(sp *vector.StatusPacket, sender string) {
 	fmt.Print(sp.StringStatusWithSender(sender))
 
@@ -239,7 +237,9 @@ func (gsp *Gossiper) processStatusPacket(sp *vector.StatusPacket, sender string)
 
 	observerChan := gsp.waitingForAck.GetObserver(sender)
 	if observerChan != nil {
-		// a registered routine was expecting a status packet
+		// A registered routine was expecting a status packet.
+		// Forward the result of the comparison to the routine to potentially
+		// trigger the coin toss.
 		// log.Print("OBSERVER FOUND")
 		observer.SendACKToChannel(&observerChan, sp, same)
 	}
@@ -249,6 +249,7 @@ func (gsp *Gossiper) processStatusPacket(sp *vector.StatusPacket, sender string)
 
 }
 
+// Handles the anti entropy timer
 func (gsp *Gossiper) startAntiEntropyHandler() {
 	antiEntropyDuration := time.Duration(gsp.antiEntropyTimer) * time.Second
 	timer := time.NewTicker(antiEntropyDuration)
@@ -273,6 +274,7 @@ func (gsp *Gossiper) startAntiEntropyHandler() {
 ////////////////////////////
 // Network //
 ////////////////////////////
+// Handles the incoming packets.
 func handleIncomingPackets(socket socket.Socket) <-chan *receivedPackets {
 	out := make(chan *receivedPackets, channelSize)
 	go func() {
@@ -285,6 +287,7 @@ func handleIncomingPackets(socket socket.Socket) <-chan *receivedPackets {
 	return out
 }
 
+// Processes the incoming messages.
 func (gsp *Gossiper) processMessages(peerMsgs <-chan *receivedPackets, clientMsgs <-chan *receivedPackets) {
 	// increment go routine counter to keep main program running.
 	gsp.active.Add(1)
@@ -330,13 +333,14 @@ func (gsp *Gossiper) processMessages(peerMsgs <-chan *receivedPackets, clientMsg
 ////////////////////////////
 // Gossiper //
 ////////////////////////////
-
+// Kills the gossiper
 func (gsp *Gossiper) killGossiper() {
 	gsp.peersSocket.Close()
 	gsp.uiSocket.Close()
 	gsp.active.Done()
 }
 
+// Starts the gossiper
 func (gsp *Gossiper) start() {
 	gsp.active.Add(1)
 	peerChan := handleIncomingPackets(gsp.peersSocket)

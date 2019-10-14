@@ -9,7 +9,7 @@ import (
 
 const MaxBufferSize = 1024
 
-//Socket is a generic interface representing a socket
+// Socket is a generic interface representing a socket
 type Socket interface {
 	Address() string
 	Send(data []byte, address string)
@@ -17,7 +17,7 @@ type Socket interface {
 	Close()
 }
 
-//UDPSocket implements the socket inteface and represents a UDP socket
+// UDPSocket implements the socket inteface and represents a UDP socket
 type UDPSocket struct {
 	connection *net.UDPConn
 }

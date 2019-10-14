@@ -6,12 +6,13 @@ import (
 	"github.com/vquelque/Peerster/vector"
 )
 
+// Observer structure used for callback to routine
 type Observer struct {
 	waitingForAck map[string]chan ACK
 	lock          *sync.RWMutex
 }
 
-// type for sending ack and result of comaprison with current vector clock to ack listener
+// ACK used for sending result of comaprison with current vector clock to ack listener
 type ACK struct {
 	StatusPacket vector.StatusPacket
 	Same         bool
