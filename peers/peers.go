@@ -33,11 +33,15 @@ func (peersSet *Peers) Add(peer string) {
 
 func (peersSet *Peers) PrintPeers() string {
 	var peersString string
+	index := 0
 	for peer := range peersSet.peers.Iterator().C {
+		if index > 0 {
+			peersString += ","
+		}
 		peersString += peer.(string)
-		peersString += ","
+		index++
 	}
-	return fmt.Sprintf("PEERS : " + peersString[:len(peersString)-1])
+	return fmt.Sprintf("PEERS : " + peersString)
 }
 
 func (peersSet *Peers) PickRandomPeer(sender string) string {

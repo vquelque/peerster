@@ -20,7 +20,7 @@ type ACK struct {
 // SendACKToChannel wrap the ack and the result of the comparison with the currrent vector clock
 // and send them to the channel
 func SendACKToChannel(channel chan<- ACK, sp *vector.StatusPacket, same bool) {
-	toChannel := ACK{statusPacket: *sp, same: same}
+	toChannel := ACK{StatusPacket: *sp, Same: same}
 	channel <- toChannel
 }
 

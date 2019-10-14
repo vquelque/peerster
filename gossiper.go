@@ -18,19 +18,22 @@ import (
 )
 
 const channelSize = 4
-const ackTimeout = 10 //in seconds
+const ackTimeout = 10         //in seconds
+const defaultAntiEntropy = 10 //in seconds
 
 // Gossiper main structure
 type Gossiper struct {
-	name          string
-	peers         *peers.Peers
-	simple        bool
-	peersSocket   socket.Socket
-	uiSocket      socket.Socket
-	vectorClock   *vector.Vector     //current status of this peer
-	rumors        *storage.Storage   //store all previously received rumors
-	active        *sync.WaitGroup    //active go routines
-	waitingForAck *observer.Observer //
+	name                  string
+	peers                 *peers.Peers
+	simple                bool
+	peersSocket           socket.Socket
+	uiSocket              socket.Socket
+	vectorClock           *vector.Vector     //current status of this peer.
+	rumors                *storage.Storage   //store all previously received rumors.
+	active                *sync.WaitGroup    //active go routines.
+	waitingForAck         *observer.Observer //registered go routines channels waiting for an ACK.
+	antiEntropyTimer      int
+	resetAntiEntropyTimer chan bool
 }
 
 // GossipPacket is the only type of packet sent to other peers.
@@ -40,7 +43,7 @@ type GossipPacket struct {
 	StatusPacket *vector.StatusPacket
 }
 
-//encapsulate received messages from peers/client to put in the queue
+// Encapsulate received messages from peers/client to put in the queue
 type receivedPackets struct {
 	data   []byte
 	sender string
@@ -52,7 +55,7 @@ type packetToSend struct {
 }
 
 // NewGossiper creates and returns a new gossiper running at given address, port with given name.
-func newGossiper(address string, name string, uiPort int, peersList string, simple bool) *Gossiper {
+func newGossiper(address string, name string, uiPort int, peersList string, simple bool, antiEntropyTimer int) *Gossiper {
 	peersSocket := socket.NewUDPSocket(address)
 	uiSocket := socket.NewUDPSocket(fmt.Sprintf("127.0.0.1:%d", uiPort))
 
@@ -60,16 +63,20 @@ func newGossiper(address string, name string, uiPort int, peersList string, simp
 	vectorClock := vector.NewVector()
 	storage := storage.NewStorage()
 	waitingForAck := observer.Init()
+	resetAntiEntropyChan := make(chan (bool))
+
 	return &Gossiper{
-		name:          name,
-		peers:         peersSet,
-		simple:        simple,
-		peersSocket:   peersSocket,
-		uiSocket:      uiSocket,
-		vectorClock:   vectorClock,
-		rumors:        storage,
-		waitingForAck: waitingForAck,
-		active:        &sync.WaitGroup{},
+		name:                  name,
+		peers:                 peersSet,
+		simple:                simple,
+		peersSocket:           peersSocket,
+		uiSocket:              uiSocket,
+		vectorClock:           vectorClock,
+		rumors:                storage,
+		waitingForAck:         waitingForAck,
+		active:                &sync.WaitGroup{},
+		antiEntropyTimer:      antiEntropyTimer,
+		resetAntiEntropyTimer: resetAntiEntropyChan,
 	}
 }
 
@@ -224,16 +231,43 @@ func (gsp *Gossiper) sendStatusPacket(addr string) {
 
 func (gsp *Gossiper) processStatusPacket(sp *vector.StatusPacket, sender string) {
 	fmt.Print(sp.StringStatusWithSender(sender))
+
+	//reset anti entropy timer
+	gsp.resetAntiEntropyTimer <- true
+
 	same, toAsk, toSend := gsp.vectorClock.CompareWithStatusPacket(*sp)
 
 	observerChan := gsp.waitingForAck.GetObserver(sender)
 	if observerChan != nil {
+		// a registered routine was expecting a status packet
 		// log.Print("OBSERVER FOUND")
 		observer.SendACKToChannel(observerChan, sp, same)
 	}
-
+	// if no registered channel, it is an anti-entropy status packet.
+	// in both cases synchronize with the peer
 	gsp.synchronizeWithPeer(same, toAsk, toSend, sender)
 
+}
+
+func (gsp *Gossiper) startAntiEntropyHandler() {
+	antiEntropyDuration := time.Duration(gsp.antiEntropyTimer) * time.Second
+	timer := time.NewTicker(antiEntropyDuration)
+	go func() {
+		for {
+			select {
+			case <-timer.C:
+				// timer elapsed : send status packet to randomly chosen peer
+				log.Println("No STATUS received : sending random STATUS")
+				randPeer := gsp.peers.PickRandomPeer("")
+				gsp.sendStatusPacket(randPeer)
+			case <-gsp.resetAntiEntropyTimer:
+				// timer reset : we received a status packet
+				log.Println("Received STATUS : Resetting anti entropy timer")
+				timer = time.NewTicker(antiEntropyDuration)
+			}
+
+		}
+	}()
 }
 
 ////////////////////////////
@@ -308,17 +342,24 @@ func (gsp *Gossiper) start() {
 	peerChan := handleIncomingPackets(gsp.peersSocket)
 	clientChan := handleIncomingPackets(gsp.uiSocket)
 	go gsp.processMessages(peerChan, clientChan)
+	gsp.startAntiEntropyHandler()
 }
 
 func main() {
 	uiPort := flag.Int("UIPort", 8080, "Port for the UI client (default 8080)")
 	gossipAddr := flag.String("gossipAddr", "", "ip:port for the gossiper")
-	name := flag.String("name", "", "name of the gossiper")
-	peersList := flag.String("peers", "", "comma separated list of peers of the form ip:port")
-	simple := flag.Bool("simple", false, "run gossiper in simple broadcast mode")
+	name := flag.String("name", "", "Name of the gossiper")
+	peersList := flag.String("peers", "", "Comma separated list of peers of the form ip:port")
+	simple := flag.Bool("simple", false, "Run gossiper in simple broadcast mode")
+	antiEntropy := flag.Int("antiEntropy", 10, "Anti entropy timer value in seconds (default to 10sec)")
 	flag.Parse()
 
-	gossiper := newGossiper(*gossipAddr, *name, *uiPort, *peersList, *simple)
+	antiEntropyTimer := *antiEntropy
+	if antiEntropyTimer < 0 {
+		antiEntropyTimer = defaultAntiEntropy
+	}
+
+	gossiper := newGossiper(*gossipAddr, *name, *uiPort, *peersList, *simple, antiEntropyTimer)
 	gossiper.start()
 	gossiper.active.Wait()
 }
