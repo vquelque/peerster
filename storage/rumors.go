@@ -44,3 +44,22 @@ func (storage *Storage) GetRumor(peer string, rumorId uint32) *message.RumorMess
 	}
 	return &archive[rumorId]
 }
+func (storage *Storage) GetAllRumorsForPeer(peer string) []message.RumorMessage {
+	storage.lock.RLock()
+	defer storage.lock.RUnlock()
+	rumors := make([]message.RumorMessage, 0)
+	archive, found := storage.rumors[peer]
+	if found {
+		rumors = archive
+	}
+	return rumors
+}
+func (storage *Storage) GetAllRumors() []message.RumorMessage {
+	storage.lock.RLock()
+	defer storage.lock.RUnlock()
+	rumors := make([]message.RumorMessage, 0)
+	for _, rumorsForPeer := range storage.rumors {
+		rumors = append(rumors, rumorsForPeer...)
+	}
+	return rumors
+}

@@ -31,6 +31,16 @@ func (peersSet *Peers) Add(peer string) {
 	peersSet.peers.Add(peer)
 }
 
+func (peersSet *Peers) Delete(peer string) {
+	if peersSet.CheckPeerPresent(peer) {
+		peersSet.peers.Remove(peer)
+	}
+}
+
+func (peersSet *Peers) CheckPeerPresent(peer string) bool {
+	return peersSet.peers.Contains(peer)
+}
+
 func (peersSet *Peers) PrintPeers() string {
 	var peersString string
 	index := 0
@@ -60,7 +70,7 @@ func (peersSet *Peers) PickRandomPeer(sender string) string {
 			return randPeer2.(string)
 		}
 		if peersSet.peers.Cardinality() == 0 {
-			return "" //no other peers known
+			return randPeer.(string) //no other peers known
 		}
 		if peersSet.peers.Cardinality() < 0 {
 			log.Println("Error. No peers known whereas at least one message received.")
@@ -68,4 +78,12 @@ func (peersSet *Peers) PickRandomPeer(sender string) string {
 		}
 	}
 	return randPeer.(string)
+}
+
+func (peerSet *Peers) GetAllPeers() []string {
+	peerList := make([]string, 0)
+	for peer := range peerSet.Iterator().C {
+		peerList = append(peerList, peer.(string))
+	}
+	return peerList
 }

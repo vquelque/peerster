@@ -154,12 +154,10 @@ func (gsp *Gossiper) rumormonger(rumor *message.RumorMessage, peerAddr string) {
 
 // Listen and handle ack or timeout.
 func (gsp *Gossiper) listenForAck(rumor *message.RumorMessage, peerAddr string) {
-	gsp.active.Add(1)
 	// register this channel inside the map of channels waiting for an ack (observer).
 	channel := gsp.waitingForAck.Register(peerAddr)
 	timer := time.NewTicker(ackTimeout * time.Second)
 	defer func() {
-		gsp.active.Done()
 		timer.Stop()
 		gsp.waitingForAck.Unregister(peerAddr)
 	}()
@@ -289,10 +287,6 @@ func handleIncomingPackets(socket socket.Socket) <-chan *receivedPackets {
 
 // Processes the incoming messages.
 func (gsp *Gossiper) processMessages(peerMsgs <-chan *receivedPackets, clientMsgs <-chan *receivedPackets) {
-	// increment go routine counter to keep main program running.
-	gsp.active.Add(1)
-	// decrement goroutine counter at exit.
-	defer gsp.active.Done()
 	for {
 		select {
 		case peerMsg := <-peerMsgs:
@@ -364,6 +358,8 @@ func main() {
 	}
 
 	gossiper := newGossiper(*gossipAddr, *name, *uiPort, *peersList, *simple, antiEntropyTimer)
+	StartUIServer(*uiPort, gossiper)
 	gossiper.start()
 	gossiper.active.Wait()
+
 }
