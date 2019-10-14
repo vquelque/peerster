@@ -241,7 +241,7 @@ func (gsp *Gossiper) processStatusPacket(sp *vector.StatusPacket, sender string)
 	if observerChan != nil {
 		// a registered routine was expecting a status packet
 		// log.Print("OBSERVER FOUND")
-		observer.SendACKToChannel(observerChan, sp, same)
+		observer.SendACKToChannel(&observerChan, sp, same)
 	}
 	// if no registered channel, it is an anti-entropy status packet.
 	// in both cases synchronize with the peer
@@ -257,12 +257,12 @@ func (gsp *Gossiper) startAntiEntropyHandler() {
 			select {
 			case <-timer.C:
 				// timer elapsed : send status packet to randomly chosen peer
-				log.Println("No STATUS received : sending random STATUS")
+				// log.Println("No STATUS received : sending random STATUS")
 				randPeer := gsp.peers.PickRandomPeer("")
 				gsp.sendStatusPacket(randPeer)
 			case <-gsp.resetAntiEntropyTimer:
 				// timer reset : we received a status packet
-				log.Println("Received STATUS : Resetting anti entropy timer")
+				// log.Println("Received STATUS : Resetting anti entropy timer")
 				timer = time.NewTicker(antiEntropyDuration)
 			}
 
