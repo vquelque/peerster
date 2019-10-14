@@ -20,17 +20,17 @@ import (
 const channelSize = 4
 const ackTimeout = 10 //in seconds
 
-// Gossiper structure
+// Gossiper main structure
 type Gossiper struct {
 	name          string
 	peers         *peers.Peers
 	simple        bool
 	peersSocket   socket.Socket
 	uiSocket      socket.Socket
-	vectorClock   *vector.Vector
-	rumors        *storage.Storage
-	active        *sync.WaitGroup
-	waitingForAck *observer.Observer
+	vectorClock   *vector.Vector     //current status of this peer
+	rumors        *storage.Storage   //store all previously received rumors
+	active        *sync.WaitGroup    //active go routines
+	waitingForAck *observer.Observer //
 }
 
 // GossipPacket is the only type of packet sent to other peers.
@@ -120,8 +120,6 @@ func (gsp *Gossiper) processRumorMessage(msg *message.RumorMessage, sender strin
 	if sender != "" {
 		fmt.Println(msg.PrintRumor(sender))
 		gsp.peers.Add(sender)
-		// acknowledge the packet
-		defer gsp.sendStatusPacket(sender)
 	}
 
 	if gsp.vectorClock.NextMessageForPeer(msg.Origin) == msg.ID {
@@ -137,6 +135,11 @@ func (gsp *Gossiper) processRumorMessage(msg *message.RumorMessage, sender strin
 			log.Print("No other peers to forward rumor message")
 		}
 	}
+
+	// acknowledge the packet if not sent by client
+	if sender != "" {
+		gsp.sendStatusPacket(sender)
+	}
 }
 
 // handle the rumormongering process and callback of eventual ack or timeout
@@ -148,12 +151,14 @@ func (gsp *Gossiper) rumormonger(rumor *message.RumorMessage, peerAddr string) {
 
 func (gsp *Gossiper) listenForAck(rumor *message.RumorMessage, peerAddr string) {
 	gsp.active.Add(1)
-	defer gsp.active.Done()
 	// register this channel inside the map of channels waiting for an ack (observer).
 	channel := gsp.waitingForAck.Register(peerAddr)
-	defer gsp.waitingForAck.Unregister(peerAddr)
 	timer := time.NewTicker(ackTimeout * time.Second)
-	defer timer.Stop()
+	defer func() {
+		gsp.active.Done()
+		timer.Stop()
+		gsp.waitingForAck.Unregister(peerAddr)
+	}()
 
 	//keep running while channel open with for loop assignment
 	for {
