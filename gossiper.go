@@ -17,7 +17,7 @@ import (
 	"github.com/vquelque/Peerster/vector"
 )
 
-const channelSize = 4
+const channelSize = 10
 const ackTimeout = 10         //in seconds
 const defaultAntiEntropy = 10 //in seconds
 
@@ -168,10 +168,7 @@ func (gsp *Gossiper) listenForAck(rumor *message.RumorMessage, peerAddr string) 
 		case <-timer.C:
 			gsp.coinFlip(rumor, peerAddr)
 			return
-		case ack, open := <-channel:
-			if !open {
-				return
-			}
+		case ack := <-channel:
 			if ack.Same {
 				gsp.coinFlip(rumor, peerAddr)
 			}
@@ -242,7 +239,7 @@ func (gsp *Gossiper) processStatusPacket(sp *vector.StatusPacket, sender string)
 		// Forward the result of the comparison to the routine to potentially
 		// trigger the coin toss.
 		// log.Print("OBSERVER FOUND")
-		observer.SendACKToChannel(&observerChan, sp, same)
+		observer.SendACKToChannel(observerChan, sp, same)
 	}
 	// if no registered channel, it is an anti-entropy status packet.
 	// in both cases synchronize with the peer
