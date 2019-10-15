@@ -50,8 +50,8 @@ func (obs *Observer) Unregister(sender string) {
 }
 
 func (obs *Observer) GetObserver(peer string) chan ACK {
-	obs.lock.RLock()
-	defer obs.lock.RUnlock()
+	obs.lock.Lock()
+	defer obs.lock.Unlock()
 	ackChan, found := obs.waitingForAck[peer]
 	if found {
 		return ackChan
