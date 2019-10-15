@@ -168,7 +168,10 @@ func (gsp *Gossiper) listenForAck(rumor *message.RumorMessage, peerAddr string) 
 		case <-timer.C:
 			gsp.coinFlip(rumor, peerAddr)
 			return
-		case ack := <-channel:
+		case ack, open := <-channel:
+			if !open {
+				return
+			}
 			if ack.Same {
 				gsp.coinFlip(rumor, peerAddr)
 			}
@@ -332,6 +335,7 @@ func (gsp *Gossiper) killGossiper() {
 	gsp.peersSocket.Close()
 	gsp.uiSocket.Close()
 	gsp.active.Done()
+	gsp = nil
 }
 
 // Starts the gossiper
@@ -350,6 +354,7 @@ func main() {
 	peersList := flag.String("peers", "", "Comma separated list of peers of the form ip:port")
 	simple := flag.Bool("simple", false, "Run gossiper in simple broadcast mode")
 	antiEntropy := flag.Int("antiEntropy", 10, "Anti entropy timer value in seconds (default to 10sec)")
+	startUIServer := flag.Bool("uisrv", false, "set to true to start the UI server on the UI port")
 	flag.Parse()
 
 	antiEntropyTimer := *antiEntropy
@@ -358,7 +363,13 @@ func main() {
 	}
 
 	gossiper := newGossiper(*gossipAddr, *name, *uiPort, *peersList, *simple, antiEntropyTimer)
-	StartUIServer(*uiPort, gossiper)
+
+	//starts UI server if flag is set
+	if *startUIServer {
+		uiServer := StartUIServer(*uiPort, gossiper)
+		defer uiServer.Shutdown(nil)
+	}
+
 	gossiper.start()
 	gossiper.active.Wait()
 
