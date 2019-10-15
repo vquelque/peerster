@@ -44,7 +44,6 @@ func (obs *Observer) Unregister(sender string) {
 	defer obs.lock.Unlock()
 	ackChan, found := obs.waitingForAck[sender]
 	if found && ackChan != nil {
-		close(ackChan)
 		obs.waitingForAck[sender] = nil
 	}
 }
