@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"log"
 	"net"
 )
 
@@ -18,7 +17,7 @@ func MapToUDP(vs []string) *[]net.UDPAddr {
 func ToUDPAddr(addr string) *net.UDPAddr {
 	udpAddr, err := net.ResolveUDPAddr("udp4", addr)
 	if err != nil {
-		log.Print(err)
+		//	log.Print(err)
 		return nil
 	}
 	return udpAddr

@@ -1,41 +1,52 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
     <title>Peerster</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <h1>Peerster : The modern gen decentralized chat</h1> 
-<div id="wrapper">
-    <div id="menu">
-            <p class="welcome">Welcome, <span class="peerID"></span>
-            <p class="logout"><a id="exit" href="#">Exit Chat</a></p>
-            <div style="clear:both"></div>
-        </div>
-        
-        <div id="chatbox"></div>
-        
-        <form name="message" action="">
-            <input name="usermsg" type="text" id="usermsg" size="63" />
-            <input name="submitmsg" type="submit"  id="submitmsg" value="Send" />
-        </form>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+
+  <body>
+
+    <h1>Peerster : The modern gen decentralized chat</h1>
+    <div id="wrapper">
+      <div id="menu">
+        <p class="welcome">Welcome, <span class="peerID"></span></p>
+        <p class="logout"><a id="exit" href="#">Exit Chat</a></p>
+        <div style="clear:both"></div>
+      </div>
+
+      <div id="chatbox"></div>
+
+      <form name="message" action="">
+        <input name="usermsg" type="text" id="usermsg" size="63" />
+        <input name="submitmsg" type="submit" id="submitmsg" value="Send" />
+      </form>
     </div>
-    <br>
+    <br />
 
     <div id="peerWrapper">
-    <h2> Known Peers : </h2>
-    <div class="peers">
-        
-    </div>
+      <h2>Known Peers :</h2>
+      <div class="peers"></div>
     </div>
 
-</body>
-<!-- jQuery --> 
-<script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>    
-<!-- custom JS -->
-<script src="main.js"></script>
-</body>
+    <br />
+
+    <div id="managePeerWrapper">
+        <h2>Manage peers : </h2>
+        <p>Enter peer address to add/remove this peer :</p>
+        <br>
+        <form action="/peers" method="post">
+            <input type="text" name="peerAddr" id="peerAddr" placeholder="Peer address">
+            <button type="submit">Add/Remove</button>
+        </form>
+    </div>
+  </body>
+
+  <!-- jQuery -->
+  <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+  <!-- custom JS -->
+  <script src="main.js"></script>
 </html>

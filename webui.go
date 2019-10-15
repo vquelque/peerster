@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
 
 	"github.com/vquelque/Peerster/message"
+	"github.com/vquelque/Peerster/utils"
 )
 
 var tpl = template.Must(template.ParseFiles("template/index.html"))
@@ -18,22 +18,6 @@ type UIData struct {
 	PeerID      string
 	Peers       []string
 	MessageList []string
-}
-
-func decodeJSON(w http.ResponseWriter, r *http.Request, out interface{}) error {
-	data, err := ioutil.ReadAll(r.Body)
-	if err == nil {
-		err := json.Unmarshal(data, out)
-		if err == nil {
-			return nil
-		} else {
-			w.WriteHeader(http.StatusBadRequest)
-			return err
-		}
-	} else {
-		w.WriteHeader(http.StatusBadRequest)
-		return err
-	}
 }
 
 func (gsp *Gossiper) peersListHandler(w http.ResponseWriter, r *http.Request) {
@@ -49,20 +33,26 @@ func (gsp *Gossiper) peersListHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write(peerListJSON)
 	case "POST":
-		var peerAddr string
-		err := decodeJSON(w, r, peerAddr)
-		if err != nil {
+		http.Redirect(w, r, r.Header.Get("/"), 302)
+		if err := r.ParseForm(); err != nil {
+			fmt.Fprintf(w, "ParseForm() err: %v", err)
 			return
 		}
+		peerAddr := r.FormValue("peerAddr")
 		if peerAddr == gsp.peersSocket.Address() {
-			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		peerAddrChecked := utils.ToUDPAddr(peerAddr)
+		if peerAddrChecked == nil {
 			return
 		}
 		if !gsp.peers.CheckPeerPresent(peerAddr) {
 			gsp.peers.Add(peerAddr)
-			w.WriteHeader(http.StatusOK)
-			return
+		} else {
+			gsp.peers.Delete(peerAddr)
 		}
+	default:
+		fmt.Fprintf(w, "Sorry, only GET and POST methods are supported.")
 	}
 }
 func (gsp *Gossiper) msgHandler(w http.ResponseWriter, r *http.Request) {
