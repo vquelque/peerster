@@ -1,10 +1,13 @@
 $(document).ready(function() {
-  $(".peerID").load("/id");
+ 
+  $.getJSON("/id", function(data) {
+    $("#peerID").html(data)
+  });
 
   $.getJSON("/peers", function(data) {
     var items = [];
     $.each(data, function(key, val) {
-      items.push("<li id='" + key + "'>" + val + "</li>");
+      items.push("<li id='" + key + "' class='peerItem'>" + val + "</li>");
     });
 
     $("<ul/>", {
@@ -17,12 +20,12 @@ $(document).ready(function() {
     var items = [];
     $.each(data, function(key, val) {
       var str =
-        "Rumor ID " +
+        "<strong> Rumor ID </strong> " +
         val.ID +
-        " from " +
+        " <strong> from </strong> " +
         val.Origin +
         "<br>" +
-        "MESSAGE : " +
+        "<strong> MESSAGE : </strong>" +
         val.Text;
       items.push("<li id='" + key + "' class='msgItem'>" + str + "</li>");
     });

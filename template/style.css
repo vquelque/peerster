@@ -28,7 +28,16 @@ a {
 a:hover {
   text-decoration: underline;
 }
+.content {
+  margin-top: 40px;
+}
+.row {
+  display: flex;
+}
 
+.column {
+  flex: 50%;
+}
 #wrapper {
   margin: 0 auto;
   padding-bottom: 25px;
@@ -43,6 +52,7 @@ a:hover {
   background: rgb(218, 250, 222);
   width: 504px;
   border: 1px solid rgb(238, 241, 50);
+  height: 234px;
 }
 
 #managePeerWrapper {
@@ -71,6 +81,13 @@ a:hover {
   width: 430px;
   border: 1px solid #acd8f0;
   overflow: auto;
+  display: flex;
+  flex-direction: column-reverse;
+}
+
+#peerID {
+  color: red;
+  font-weight: bold;
 }
 
 #usermsg {
@@ -104,8 +121,8 @@ a:hover {
 
 .peerList {
   list-style: none;
-  margin-left: 0;
-  padding-left: 0;
+  margin: 0 auto;
+  padding: 0px ;
 }
 
 .msgList {
@@ -120,8 +137,18 @@ a:hover {
   margin-bottom: 10px;
 }
 
-.peerList {
-  list-style: none;
-  margin-left: 0;
-  padding-left: 0;
+.peers {
+  text-align: left;
+  margin: 0 auto;
+  margin-bottom: 25px;
+  padding: 10px;
+  background: rgb(226, 228, 226);
+  height: 170px;
+  width: 430px;
+  border: 1px solid #acd8f0;
+  overflow: auto;
+}
+
+.peerItem {
+  margin-bottom: 3px;
 }
