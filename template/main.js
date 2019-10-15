@@ -16,7 +16,7 @@ $(document).ready(function() {
     }).appendTo(".peers");
   });
 
-  $.getJSON("/messages", function(data) {
+  $.getJSON("/message", function(data) {
     var items = [];
     $.each(data, function(key, val) {
       var str =

@@ -16,13 +16,12 @@
         <div id="wrapper">
           <div id="menu">
             <p class="welcome">Welcome <span id="peerID"></span> !</p>
-            <p class="logout"><a id="exit" href="#">Exit Chat</a></p>
             <div style="clear:both"></div>
           </div>
 
           <div id="chatbox"></div>
 
-          <form action="/messages" method="POST">
+          <form action="/message" method="POST">
             <input name="message" type="text" id="message" size="63" />
             <button type="submit">Send !</button>
           </form>

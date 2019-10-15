@@ -102,7 +102,7 @@ func StartUIServer(UIPort int, gsp *Gossiper) *http.Server {
 	mux.Handle("/", http.FileServer(http.Dir("template/")))
 	mux.HandleFunc("/id", gsp.idHandler)
 	mux.HandleFunc("/peers", gsp.peersListHandler)
-	mux.HandleFunc("/messages", gsp.msgHandler)
+	mux.HandleFunc("/message", gsp.msgHandler)
 	server := &http.Server{Addr: UIPortStr, Handler: mux}
 	go func() {
 		if err := server.ListenAndServe(); err != nil {
