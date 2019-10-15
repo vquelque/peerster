@@ -10,13 +10,17 @@ import (
 type Storage struct {
 	// use a map to store the previous rumors. Key corresponds to peer origin.
 	// value is a slice with all rumors for a given peer with IDs starting at 0.
-	rumors map[string][]message.RumorMessage
-	lock   sync.RWMutex
+	rumors      map[string][]message.RumorMessage
+	rumor_order []string //append the name of the origin when the rumors arrive.
+	// allows the client to retrieve rumors in order
+	lock sync.RWMutex
 }
 
 // NewStorage creates a new storage to store rumors
 func NewStorage() *Storage {
-	st := &Storage{rumors: make(map[string][]message.RumorMessage)}
+	st := &Storage{
+		rumors:      make(map[string][]message.RumorMessage),
+		rumor_order: make([]string, 0)}
 	return st
 }
 
@@ -30,6 +34,7 @@ func (storage *Storage) StoreRumor(rumor *message.RumorMessage) {
 		// it is the good message
 		archive = append(archive, *rumor)
 		storage.rumors[origin] = archive
+		storage.rumor_order = append(storage.rumor_order, origin)
 	}
 }
 
@@ -54,12 +59,16 @@ func (storage *Storage) GetAllRumorsForPeer(peer string) []message.RumorMessage 
 	}
 	return rumors
 }
+
+// GetAllRumors return all the rumors in the order they were added.
 func (storage *Storage) GetAllRumors() []message.RumorMessage {
 	storage.lock.RLock()
 	defer storage.lock.RUnlock()
+	rID := make(map[string]int, len(storage.rumor_order))
 	rumors := make([]message.RumorMessage, 0)
-	for _, rumorsForPeer := range storage.rumors {
-		rumors = append(rumors, rumorsForPeer...)
+	for _, sender := range storage.rumor_order {
+		rumors = append(rumors, storage.rumors[sender][rID[sender]])
+		rID[sender]++
 	}
 	return rumors
 }
