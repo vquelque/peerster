@@ -58,13 +58,8 @@ func (gsp *Gossiper) peersListHandler(w http.ResponseWriter, r *http.Request) {
 func (gsp *Gossiper) msgHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
-		peerAddr := r.URL.Query().Get("peer")
 		var rumorMessageList []message.RumorMessage
-		if (peerAddr) == "" {
-			rumorMessageList = gsp.rumors.GetAllRumors()
-		} else {
-			rumorMessageList = gsp.rumors.GetAllRumorsForPeer(peerAddr)
-		}
+		rumorMessageList = gsp.rumors.GetAllRumors()
 		mmsgListJSON, err := json.Marshal(rumorMessageList)
 		if err != nil {
 			return
@@ -72,6 +67,17 @@ func (gsp *Gossiper) msgHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write(mmsgListJSON)
+	case "POST":
+		http.Redirect(w, r, r.Header.Get("/"), 302)
+		if err := r.ParseForm(); err != nil {
+			fmt.Fprintf(w, "ParseForm() err: %v", err)
+			return
+		}
+		messageText := r.FormValue("message")
+		cliMsg := &message.Message{Msg: messageText}
+		gsp.ProcessClientMessage(cliMsg)
+	default:
+		fmt.Fprintf(w, "Sorry, only GET and POST methods are supported.")
 	}
 }
 

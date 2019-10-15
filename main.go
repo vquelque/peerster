@@ -115,6 +115,23 @@ func (gsp *Gossiper) processSimpleMessage(msg *message.SimpleMessage) {
 }
 
 ////////////////////////////
+// ClientMessage //
+////////////////////////////
+func (gsp *Gossiper) ProcessClientMessage(msg *message.Message) {
+	fmt.Println(msg.String())
+	if gsp.simple {
+		gp := &GossipPacket{message.NewSimpleMessage(msg.Msg, gsp.name, gsp.peersSocket.Address()), nil, nil}
+		//broadcast packet
+		gsp.broadcastPacket(gp, gsp.peersSocket.Address())
+	} else {
+		mID := gsp.vectorClock.NextMessageForPeer(gsp.name)
+		rumorMsg := message.NewRumorMessage(gsp.name, mID, msg.Msg)
+		//send to random peer
+		gsp.processRumorMessage(rumorMsg, "")
+	}
+}
+
+////////////////////////////
 // RumorMessage //
 ////////////////////////////
 // Procecces incoming rumor message.
@@ -306,19 +323,9 @@ func (gsp *Gossiper) processMessages(peerMsgs <-chan *receivedPackets, clientMsg
 				log.Print("Error : more than one message or 3 NIL in GossipPacket")
 			}
 		case cliMsg := <-clientMsgs:
-			var msg *message.Message = &message.Message{}
+			msg := &message.Message{}
 			protobuf.Decode(cliMsg.data, msg)
-			fmt.Println(msg.String())
-			if gsp.simple {
-				gp := &GossipPacket{message.NewSimpleMessage(msg.Msg, gsp.name, gsp.peersSocket.Address()), nil, nil}
-				//broadcast packet
-				gsp.broadcastPacket(gp, gsp.peersSocket.Address())
-			} else {
-				mID := gsp.vectorClock.NextMessageForPeer(gsp.name)
-				rumorMsg := message.NewRumorMessage(gsp.name, mID, msg.Msg)
-				//send to random peer
-				gsp.processRumorMessage(rumorMsg, "")
-			}
+			gsp.ProcessClientMessage(msg)
 		}
 		fmt.Println(gsp.peers.PrintPeers())
 	}
