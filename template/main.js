@@ -19,9 +19,10 @@ $(document).ready(function() {
   $.getJSON("/message", function(data) {
     var items = [];
     $.each(data, function(key, val) {
+      var mID = parseInt(val.ID) + 1
       var str =
         "<strong> Rumor ID </strong> " +
-        val.ID +
+        mID +
         " <strong> from </strong> " +
         val.Origin +
         "<br>" +
