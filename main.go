@@ -348,7 +348,9 @@ func (gsp *Gossiper) start() {
 	peerChan := handleIncomingPackets(gsp.peersSocket)
 	clientChan := handleIncomingPackets(gsp.uiSocket)
 	go gsp.processMessages(peerChan, clientChan)
-	gsp.startAntiEntropyHandler()
+	if !gsp.simple {
+		gsp.startAntiEntropyHandler()
+	}
 }
 
 func main() {
