@@ -42,7 +42,10 @@ func (socket *UDPSocket) Address() string {
 func (socket *UDPSocket) Send(data []byte, addr string) {
 	udpAddr := utils.ToUDPAddr(addr)
 	if udpAddr != nil {
-		socket.connection.WriteTo(data, udpAddr)
+		_, err := socket.connection.WriteTo(data, udpAddr)
+		if err != nil {
+			log.Print(err)
+		}
 	}
 }
 

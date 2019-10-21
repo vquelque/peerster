@@ -308,7 +308,10 @@ func (gsp *Gossiper) processMessages(peerMsgs <-chan *receivedPackets, clientMsg
 		select {
 		case peerMsg := <-peerMsgs:
 			var gp *GossipPacket = &GossipPacket{}
-			protobuf.Decode(peerMsg.data, gp)
+			err := protobuf.Decode(peerMsg.data, gp)
+			if err != nil {
+				log.Print(err)
+			}
 			switch {
 			case gp.Simple != nil:
 				// received a simple message
@@ -324,7 +327,10 @@ func (gsp *Gossiper) processMessages(peerMsgs <-chan *receivedPackets, clientMsg
 			}
 		case cliMsg := <-clientMsgs:
 			msg := &message.Message{}
-			protobuf.Decode(cliMsg.data, msg)
+			err := protobuf.Decode(cliMsg.data, msg)
+			if err != nil {
+				log.Print(err)
+			}
 			gsp.ProcessClientMessage(msg)
 		}
 		fmt.Println(gsp.peers.PrintPeers())

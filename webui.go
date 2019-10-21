@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"html/template"
 	"log"
 	"net/http"
 	"strconv"
@@ -11,14 +10,6 @@ import (
 	"github.com/vquelque/Peerster/message"
 	"github.com/vquelque/Peerster/utils"
 )
-
-var tpl = template.Must(template.ParseFiles("template/index.html"))
-
-type UIData struct {
-	PeerID      string
-	Peers       []string
-	MessageList []string
-}
 
 func (gsp *Gossiper) peersListHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {

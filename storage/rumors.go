@@ -29,7 +29,7 @@ func (storage *Storage) StoreRumor(rumor *message.RumorMessage) {
 	storage.lock.Lock()
 	defer storage.lock.Unlock()
 	origin := rumor.Origin
-	archive, _ := storage.rumors[origin]
+	archive := storage.rumors[origin]
 	if rumor.ID == uint32(len(archive)) {
 		// it is the good message
 		archive = append(archive, *rumor)
