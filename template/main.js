@@ -1,7 +1,6 @@
 $(document).ready(function() {
- 
   $.getJSON("/id", function(data) {
-    $("#peerID").html(data)
+    $("#peerID").html(data);
   });
 
   $.getJSON("/peers", function(data) {
@@ -19,7 +18,7 @@ $(document).ready(function() {
   $.getJSON("/message", function(data) {
     var items = [];
     $.each(data, function(key, val) {
-      var mID = parseInt(val.ID) + 1
+      var mID = parseInt(val.ID);
       var str =
         "<strong> Rumor ID </strong> " +
         mID +
