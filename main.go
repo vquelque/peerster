@@ -160,6 +160,11 @@ func (gsp *Gossiper) processRumorMessage(msg *message.RumorMessage, sender strin
 	if sender != "" {
 		gsp.sendStatusPacket(sender)
 	}
+
+	//update routing table if first rumor
+	if msg.ID == 1 {
+		//TODO : UPDATE ROUTING TABLE
+	}
 }
 
 // Handle the rumormongering process and launch go routine that listens for ack or timeout.

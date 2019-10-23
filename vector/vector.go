@@ -34,6 +34,10 @@ func NewVector() *Vector {
 func (vec *Vector) NextMessageForPeer(peer string) uint32 {
 	vec.peersLock.RLock()
 	defer vec.peersLock.RUnlock()
+	_, found := vec.nextMessage[peer]
+	if !found {
+		vec.nextMessage[peer] = 1
+	}
 	return vec.nextMessage[peer]
 }
 
@@ -41,6 +45,10 @@ func (vec *Vector) NextMessageForPeer(peer string) uint32 {
 func (vec *Vector) IncrementMIDForPeer(peer string) uint32 {
 	vec.peersLock.Lock()
 	defer vec.peersLock.Unlock()
+	_, found := vec.nextMessage[peer]
+	if !found {
+		vec.nextMessage[peer] = 1
+	}
 	vec.nextMessage[peer]++
 	return vec.nextMessage[peer]
 }
@@ -102,7 +110,7 @@ func (vec *Vector) CompareWithStatusPacket(otherPeerStatus StatusPacket) (same b
 	// second pass : add the peers that are only in this status vector but not in the other one.
 	for peer := range vec.nextMessage {
 		if !m[peer] {
-			ps := PeerStatus{peer, 0}
+			ps := PeerStatus{peer, 1}
 			toSend = append(toSend, ps)
 		}
 	}
@@ -112,7 +120,7 @@ func (vec *Vector) CompareWithStatusPacket(otherPeerStatus StatusPacket) (same b
 
 //Prints a PeerStatus message
 func (ps *PeerStatus) String() string {
-	return fmt.Sprintf("peer %s nextID %d", ps.Identifier, ps.NextID+1)
+	return fmt.Sprintf("peer %s nextID %d", ps.Identifier, ps.NextID)
 }
 
 //StringStatusWithSender prints a StatusMessage with its sender

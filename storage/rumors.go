@@ -30,7 +30,7 @@ func (storage *Storage) StoreRumor(rumor *message.RumorMessage) {
 	defer storage.lock.Unlock()
 	origin := rumor.Origin
 	archive := storage.rumors[origin]
-	if rumor.ID == uint32(len(archive)) {
+	if rumor.ID == uint32(len(archive)+1) {
 		// it is the good message
 		archive = append(archive, *rumor)
 		storage.rumors[origin] = archive
@@ -43,11 +43,11 @@ func (storage *Storage) GetRumor(peer string, rumorId uint32) *message.RumorMess
 	storage.lock.RLock()
 	defer storage.lock.RUnlock()
 	archive, found := storage.rumors[peer]
-	if !found || rumorId > uint32(len(archive)) {
+	if !found || rumorId > uint32(len(archive)+1) {
 		// we did not store this rumor previously => problem.
 		return nil
 	}
-	return &archive[rumorId]
+	return &archive[rumorId-1]
 }
 func (storage *Storage) GetAllRumorsForPeer(peer string) []message.RumorMessage {
 	storage.lock.RLock()
