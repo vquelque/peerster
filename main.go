@@ -89,9 +89,9 @@ func (gsp *Gossiper) send(gossipPacket *GossipPacket, addr string) {
 }
 
 func (gsp *Gossiper) broadcastPacket(pkt *GossipPacket, sender string) {
-	for peer := range gsp.peers.Iterator().C {
+	for _, peer := range gsp.peers.GetAllPeers() {
 		if peer != sender {
-			gsp.send(pkt, peer.(string))
+			gsp.send(pkt, peer)
 		}
 	}
 }
@@ -177,11 +177,12 @@ func (gsp *Gossiper) rumormonger(rumor *message.RumorMessage, peerAddr string) {
 // Listen and handle ack or timeout.
 func (gsp *Gossiper) listenForAck(rumor *message.RumorMessage, peerAddr string) {
 	// register this channel inside the map of channels waiting for an ack (observer).
-	channel := gsp.waitingForAck.Register(peerAddr)
+	id := peerAddr + rumor.Origin + string(rumor.ID)
+	channel := gsp.waitingForAck.Register(peerAddr + id)
 	timer := time.NewTicker(ackTimeout * time.Second)
 	defer func() {
 		timer.Stop()
-		gsp.waitingForAck.Unregister(peerAddr)
+		gsp.waitingForAck.Unregister(id)
 	}()
 
 	//keep running while channel open with for loop assignment
@@ -388,6 +389,7 @@ func main() {
 	}
 
 	gossiper.start()
+	defer gossiper.killGossiper()
 	gossiper.active.Wait()
 
 }

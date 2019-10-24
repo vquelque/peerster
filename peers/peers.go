@@ -2,88 +2,103 @@ package peers
 
 import (
 	"fmt"
-	"log"
+	"math/rand"
 	"strings"
-
-	. "github.com/deckarep/golang-set" //for peers
+	"sync"
 )
 
 type Peers struct {
-	peers Set
+	peers map[string]bool
+	lock  sync.RWMutex
 }
 
 func NewPeersSet(peersStr string) *Peers {
-	peersSet := &Peers{peers: NewSet()}
+	peersSet := &Peers{peers: make(map[string]bool)}
+	peersSet.lock.Lock()
+	defer peersSet.lock.Unlock()
 	peers := strings.Split(peersStr, ",")
 	for _, peer := range peers {
-		if peer != "" {
-			peersSet.peers.Add(peer)
+		_, ok := peersSet.peers[peer]
+		if peer != "" && !ok {
+			peersSet.peers[peer] = true
 		}
 	}
 	return peersSet
 }
 
-func (peersSet *Peers) Iterator() *Iterator {
-	return peersSet.peers.Iterator()
-}
-
 func (peersSet *Peers) Add(peer string) {
-	peersSet.peers.Add(peer)
+	peersSet.lock.Lock()
+	defer peersSet.lock.Unlock()
+	_, ok := peersSet.peers[peer]
+	if !ok {
+		peersSet.peers[peer] = true
+	}
 }
 
 func (peersSet *Peers) Delete(peer string) {
-	if peersSet.CheckPeerPresent(peer) {
-		peersSet.peers.Remove(peer)
+	peersSet.lock.Lock()
+	defer peersSet.lock.Unlock()
+	_, ok := peersSet.peers[peer]
+	if ok {
+		delete(peersSet.peers, peer)
 	}
 }
 
 func (peersSet *Peers) CheckPeerPresent(peer string) bool {
-	return peersSet.peers.Contains(peer)
+	peersSet.lock.RLock()
+	defer peersSet.lock.RUnlock()
+	_, ok := peersSet.peers[peer]
+	return ok
 }
 
 func (peersSet *Peers) PrintPeers() string {
 	var peersString string
 	index := 0
-	for peer := range peersSet.peers.Iterator().C {
+	for _, peer := range peersSet.GetAllPeers() {
 		if index > 0 {
 			peersString += ","
 		}
-		peersString += peer.(string)
+		peersString += peer
 		index++
 	}
 	return fmt.Sprintf("PEERS : " + peersString)
 }
 
 func (peersSet *Peers) PickRandomPeer(sender string) string {
+	peersSet.lock.RLock()
+	defer peersSet.lock.RUnlock()
 	//pick a peer at random in the set except the peer given as argument
 	//returns nil if no other peer int the set
-	if peersSet.peers.Cardinality() == 0 {
+	if peersSet.Size() == 0 {
 		return ""
 	}
-	randPeer := peersSet.peers.Pop()
-	defer peersSet.peers.Add(randPeer)
-	if randPeer == sender {
-		if peersSet.peers.Cardinality() > 0 {
-			randPeer2 := peersSet.peers.Pop()
-			peersSet.peers.Add(randPeer2)
-			log.Println(randPeer2)
-			return randPeer2.(string)
+	slice := peersSet.GetAllPeers()
+	i1 := rand.Intn(len(slice))
+	p1 := slice[i1]
+
+	if p1 == sender {
+		if len(slice) > 1 {
+			i2 := rand.Intn(len(slice))
+			p2 := slice[i2]
+			return p2
 		}
-		if peersSet.peers.Cardinality() == 0 {
-			return randPeer.(string) //no other peers known
-		}
-		if peersSet.peers.Cardinality() < 0 {
-			log.Println("Error. No peers known whereas at least one message received.")
-			return ""
-		}
+		return p1 //no other peers known
 	}
-	return randPeer.(string)
+	return p1
 }
 
 func (peerSet *Peers) GetAllPeers() []string {
+	peerSet.lock.RLock()
+	defer peerSet.lock.RUnlock()
 	peerList := make([]string, 0)
-	for peer := range peerSet.Iterator().C {
-		peerList = append(peerList, peer.(string))
+	for peer := range peerSet.peers {
+		peerList = append(peerList, peer)
 	}
 	return peerList
+}
+
+func (peerSet *Peers) Size() int {
+	peerSet.lock.RLock()
+	defer peerSet.lock.RUnlock()
+	return len(peerSet.peers)
 }
