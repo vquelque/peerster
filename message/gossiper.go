@@ -16,6 +16,15 @@ type RumorMessage struct {
 	Text   string
 }
 
+//PrivateMessage between 2 peers
+type PrivateMessage struct {
+	Origin      string
+	ID          uint32
+	Text        string
+	Destination string
+	HopLimit    uint32
+}
+
 //NewSimpleMessage creates a new simpleMessage.
 func NewSimpleMessage(contents string, originalName string, relayPeerAddr string) *SimpleMessage {
 	return &SimpleMessage{
@@ -31,6 +40,21 @@ func NewRumorMessage(origin string, ID uint32, text string) *RumorMessage {
 		Origin: origin,
 		ID:     ID,
 		Text:   text,
+	}
+}
+
+//NewPrivateMessage creates a new private message for peer dest (dest is peer identifier not address).
+// Set hop limit to 0 for default value (10)
+func NewPrivateMessage(origin string, text string, destination string, hoplimit uint32) *PrivateMessage {
+	if hoplimit <= 0 {
+		hoplimit = 10 //default hoplimit
+	}
+	return &PrivateMessage{
+		Origin:      origin,
+		ID:          0, //no sequencing for private messages
+		Text:        text,
+		Destination: destination,
+		HopLimit:    hoplimit,
 	}
 }
 
@@ -53,4 +77,10 @@ func (msg *RumorMessage) PrintRumor(relay string) string {
 func (msg *SimpleMessage) String() string {
 	return fmt.Sprintf("SIMPLE MESSAGE origin %s from %s contents %s", msg.OriginalName,
 		msg.RelayPeerAddr, msg.Contents)
+}
+
+// Printes privateMessage
+func (msg *PrivateMessage) String() string {
+	return fmt.Sprintf("PRIVATE origin %s hop-limit %d contents %s",
+		msg.Origin, msg.HopLimit, msg.Text)
 }
