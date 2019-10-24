@@ -21,6 +21,7 @@ import (
 const channelSize = 10
 const ackTimeout = 10         //in seconds
 const defaultAntiEntropy = 10 //in seconds
+const defaultRTimer = 0       //in seconds
 
 // Gossiper main structure
 type Gossiper struct {
@@ -35,7 +36,8 @@ type Gossiper struct {
 	waitingForAck         *observer.Observer //registered go routines channels waiting for an ACK.
 	antiEntropyTimer      int
 	resetAntiEntropyTimer chan bool
-	routing               *routing.RoutingTable
+	routing               *routing.Routing
+	rtimer                int
 }
 
 // GossipPacket is the only type of packet sent to other peers.
@@ -52,7 +54,7 @@ type receivedPackets struct {
 }
 
 // NewGossiper creates and returns a new gossiper running at given address, port with given name.
-func newGossiper(address string, name string, uiPort int, peersList string, simple bool, antiEntropyTimer int) *Gossiper {
+func newGossiper(address string, name string, uiPort int, peersList string, simple bool, antiEntropyTimer int, rtimer int) *Gossiper {
 	peersSocket := socket.NewUDPSocket(address)
 	uiSocket := socket.NewUDPSocket(fmt.Sprintf("127.0.0.1:%d", uiPort))
 
@@ -76,6 +78,7 @@ func newGossiper(address string, name string, uiPort int, peersList string, simp
 		antiEntropyTimer:      antiEntropyTimer,
 		resetAntiEntropyTimer: resetAntiEntropyChan,
 		routing:               routing,
+		rtimer:                rtimer,
 	}
 }
 
@@ -121,6 +124,8 @@ func (gsp *Gossiper) processSimpleMessage(msg *message.SimpleMessage) {
 ////////////////////////////
 // ClientMessage //
 ////////////////////////////
+
+// ProcessClientMessage processes client messages
 func (gsp *Gossiper) ProcessClientMessage(msg *message.Message) {
 	fmt.Println(msg.String())
 	if gsp.simple {
@@ -163,10 +168,13 @@ func (gsp *Gossiper) processRumorMessage(msg *message.RumorMessage, sender strin
 	// acknowledge the packet if not sent by client
 	if sender != "" {
 		gsp.sendStatusPacket(sender)
+		gsp.routing.UpdateRoute(msg, sender) //update routing table
 	}
 
-	//update routing table
-	gsp.routing.UpdateRoute(msg, sender)
+	if msg.Text != "" {
+		// Print DSDV only when not route runor
+		fmt.Println(gsp.routing.PrintUpdate(msg.Origin))
+	}
 }
 
 // Handle the rumormongering process and launch go routine that listens for ack or timeout.
@@ -252,7 +260,7 @@ func (gsp *Gossiper) sendStatusPacket(addr string) {
 // Processes incoming status packets.
 func (gsp *Gossiper) processStatusPacket(sp *vector.StatusPacket, sender string) {
 	fmt.Print(sp.StringStatusWithSender(sender))
-
+	gsp.peers.Add(sender)
 	//reset anti entropy timer
 	gsp.resetAntiEntropyTimer <- true
 
@@ -283,7 +291,9 @@ func (gsp *Gossiper) startAntiEntropyHandler() {
 				// timer elapsed : send status packet to randomly chosen peer
 				// log.Println("No STATUS received : sending random STATUS")
 				randPeer := gsp.peers.PickRandomPeer("")
-				gsp.sendStatusPacket(randPeer)
+				if randPeer != "" {
+					gsp.sendStatusPacket(randPeer)
+				}
 			case <-gsp.resetAntiEntropyTimer:
 				// timer reset : we received a status packet
 				// log.Println("Received STATUS : Resetting anti entropy timer")
@@ -292,6 +302,32 @@ func (gsp *Gossiper) startAntiEntropyHandler() {
 
 		}
 	}()
+}
+
+////////////////////////////
+// Routing //
+////////////////////////////
+func (gsp *Gossiper) startRoutingMessageHandler() {
+	rTimerDuration := time.Duration(gsp.rtimer) * time.Second
+	timer := time.NewTicker(rTimerDuration)
+	go func() {
+		for {
+			select {
+			case <-timer.C:
+				// timer elapsed : send route rumor packet to randomly chosen peer
+				randPeer := gsp.peers.PickRandomPeer("")
+				if randPeer != "" {
+					gsp.sendRouteRumor(randPeer)
+				}
+			}
+		}
+	}()
+}
+
+func (gsp *Gossiper) sendRouteRumor(peer string) {
+	rID := gsp.vectorClock.NextMessageForPeer(gsp.name)
+	r := message.NewRouteRumorMessage(gsp.name, rID)
+	gsp.sendRumorMessage(r, peer)
 }
 
 ////////////////////////////
@@ -365,6 +401,12 @@ func (gsp *Gossiper) start() {
 	if !gsp.simple {
 		gsp.startAntiEntropyHandler()
 	}
+	if gsp.rtimer > 0 {
+		gsp.startRoutingMessageHandler()
+		//send initial routing message
+		randPeer := gsp.peers.PickRandomPeer("")
+		gsp.sendRouteRumor(randPeer)
+	}
 }
 
 func main() {
@@ -375,14 +417,19 @@ func main() {
 	simple := flag.Bool("simple", false, "Run gossiper in simple broadcast mode")
 	antiEntropy := flag.Int("antiEntropy", 10, "Anti entropy timer value in seconds (default to 10sec)")
 	startUIServer := flag.Bool("uisrv", false, "set to true to start the UI server on the UI port")
+	rtimerFlag := flag.Int("rtimer", 0, "time between sending two route rumor messages")
 	flag.Parse()
 
 	antiEntropyTimer := *antiEntropy
 	if antiEntropyTimer < 0 {
 		antiEntropyTimer = defaultAntiEntropy
 	}
+	rtimer := *rtimerFlag
+	if rtimer < 0 {
+		rtimer = defaultRTimer
+	}
 
-	gossiper := newGossiper(*gossipAddr, *name, *uiPort, *peersList, *simple, antiEntropyTimer)
+	gossiper := newGossiper(*gossipAddr, *name, *uiPort, *peersList, *simple, antiEntropyTimer, rtimer)
 
 	//starts UI server if flag is set
 	if *startUIServer {

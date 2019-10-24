@@ -34,6 +34,16 @@ func NewRumorMessage(origin string, ID uint32, text string) *RumorMessage {
 	}
 }
 
+// NewRouteRumorMessage creates a route rumor message used to updating routing table
+// entries of a peer. It is simply a rumor message with empty text field
+func NewRouteRumorMessage(origin string, ID uint32) *RumorMessage {
+	return &RumorMessage{
+		Origin: origin,
+		ID:     ID,
+		Text:   "",
+	}
+}
+
 //Prints a RumorMessage
 func (msg *RumorMessage) PrintRumor(relay string) string {
 	return fmt.Sprintf("RUMOR origin %s from %s ID %d contents %s", msg.Origin, relay, msg.ID, msg.Text)

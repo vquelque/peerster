@@ -86,6 +86,7 @@ func (gsp *Gossiper) idHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// StartUIServer starts the UI server
 func StartUIServer(UIPort int, gsp *Gossiper) *http.Server {
 
 	UIPortStr := ":" + strconv.Itoa(UIPort)
