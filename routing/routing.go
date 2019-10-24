@@ -51,6 +51,12 @@ func (rt *Routing) Contains(origin string) bool {
 	return ok
 }
 
+func (rt *Routing) GetRoute(origin string) string {
+	rt.lock.RLock()
+	defer rt.lock.RUnlock()
+	return rt.routes[origin]
+}
+
 func (rt *Routing) UpdateRoute(msg *message.RumorMessage, sender string) {
 	rt.lock.Lock()
 	defer rt.lock.Unlock()

@@ -65,7 +65,7 @@ func (gsp *Gossiper) msgHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		messageText := r.FormValue("message")
-		cliMsg := &message.Message{Msg: messageText}
+		cliMsg := &message.Message{Text: messageText}
 		gsp.ProcessClientMessage(cliMsg)
 	default:
 		fmt.Fprintf(w, "Sorry, only GET and POST methods are supported.")

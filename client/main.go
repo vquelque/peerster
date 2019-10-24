@@ -13,7 +13,8 @@ import (
 func main() {
 
 	uiPort := flag.Int("UIPort", 8080, "Port for the UI client (default 8080)")
-	msg := flag.String("msg", "", "message to be sent")
+	msg := flag.String("msg", "", "message to be sent; if the -dest flag is present, this is a private message, otherwise it’s a rumor message")
+	destination := flag.String("dest", "", "destination for the private message. can be omitted")
 
 	flag.Parse()
 
@@ -25,7 +26,10 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	message := message.Message{Msg: *msg}
+	message := message.Message{Text: *msg}
+	if *destination != "" {
+		message.Destination = *destination
+	}
 
 	pkt, err := protobuf.Encode(&message)
 
