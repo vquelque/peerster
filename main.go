@@ -12,6 +12,7 @@ import (
 	"github.com/vquelque/Peerster/message"
 	"github.com/vquelque/Peerster/observer"
 	"github.com/vquelque/Peerster/peers"
+	"github.com/vquelque/Peerster/routing"
 	"github.com/vquelque/Peerster/socket"
 	"github.com/vquelque/Peerster/storage"
 	"github.com/vquelque/Peerster/vector"
@@ -34,6 +35,7 @@ type Gossiper struct {
 	waitingForAck         *observer.Observer //registered go routines channels waiting for an ACK.
 	antiEntropyTimer      int
 	resetAntiEntropyTimer chan bool
+	routing               *routing.RoutingTable
 }
 
 // GossipPacket is the only type of packet sent to other peers.
@@ -59,6 +61,7 @@ func newGossiper(address string, name string, uiPort int, peersList string, simp
 	storage := storage.NewStorage()
 	waitingForAck := observer.Init()
 	resetAntiEntropyChan := make(chan (bool))
+	routing := routing.NewRoutingTable()
 
 	return &Gossiper{
 		name:                  name,
@@ -72,6 +75,7 @@ func newGossiper(address string, name string, uiPort int, peersList string, simp
 		active:                &sync.WaitGroup{},
 		antiEntropyTimer:      antiEntropyTimer,
 		resetAntiEntropyTimer: resetAntiEntropyChan,
+		routing:               routing,
 	}
 }
 
@@ -161,10 +165,8 @@ func (gsp *Gossiper) processRumorMessage(msg *message.RumorMessage, sender strin
 		gsp.sendStatusPacket(sender)
 	}
 
-	//update routing table if first rumor
-	if msg.ID == 1 {
-		//TODO : UPDATE ROUTING TABLE
-	}
+	//update routing table
+	gsp.routing.UpdateRoute(msg, sender)
 }
 
 // Handle the rumormongering process and launch go routine that listens for ack or timeout.
