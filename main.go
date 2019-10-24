@@ -178,7 +178,7 @@ func (gsp *Gossiper) rumormonger(rumor *message.RumorMessage, peerAddr string) {
 func (gsp *Gossiper) listenForAck(rumor *message.RumorMessage, peerAddr string) {
 	// register this channel inside the map of channels waiting for an ack (observer).
 	id := peerAddr + rumor.Origin + string(rumor.ID)
-	channel := gsp.waitingForAck.Register(peerAddr + id)
+	channel := gsp.waitingForAck.Register(id)
 	timer := time.NewTicker(ackTimeout * time.Second)
 	defer func() {
 		timer.Stop()
