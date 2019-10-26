@@ -104,7 +104,7 @@ func (gsp *Gossiper) privateMsgHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
 		peer := r.FormValue("peer")
-		http.Redirect(w, r, r.Header.Get("/private"), 302)
+		print(peer)
 		m := gsp.privateStorage.GetAllForPeer(peer)
 		mJSON, err := json.Marshal(m)
 		if err != nil {

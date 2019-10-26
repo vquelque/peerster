@@ -17,10 +17,10 @@ $(document).ready(function() {
 
   $.getJSON("/contacts", function(data) {
     $.each(data, function(key, val) {
-      req = "/privateMsg?peer=" + key;
+      req = "/private.html?peer=" + key;
       $(".contactList").append(
         "<li class='contactItem'>" +
-          "<a href=" +
+          "<a target='_blank' rel='noopener noreferrer' href=" +
           req +
           ">" +
           key +
