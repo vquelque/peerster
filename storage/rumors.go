@@ -28,7 +28,8 @@ type RumorStorage struct {
 func NewRumorStorage() *RumorStorage {
 	st := &RumorStorage{
 		rumors:      make(map[string][]message.RumorMessage),
-		rumor_order: make([]string, 0)}
+		rumor_order: make([]string, 0),
+		lock:        sync.RWMutex{}}
 	return st
 }
 
@@ -60,10 +61,10 @@ func (storage *RumorStorage) Get(peer string, ID uint32) *message.RumorMessage {
 func (storage *RumorStorage) GetAllForPeer(peer string) []message.RumorMessage {
 	storage.lock.RLock()
 	defer storage.lock.RUnlock()
-	rumors := make([]message.RumorMessage, 0)
 	archive, found := storage.rumors[peer]
+	rumors := make([]message.RumorMessage, len(archive))
 	if found {
-		rumors = archive
+		copy(rumors, archive)
 	}
 	return rumors
 }
