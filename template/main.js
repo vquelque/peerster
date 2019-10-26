@@ -16,11 +16,13 @@ $(document).ready(function() {
   });
 
   $.getJSON("/contacts", function(data) {
-    var items = [];
     $.each(data, function(key, val) {
-      items.push(
+      req = "/privateMsg?peer=" + key;
+      $(".contactList").append(
         "<li class='contactItem'>" +
-          "<a href=''>" +
+          "<a href=" +
+          req +
+          ">" +
           key +
           "</a>" +
           " (via " +
@@ -29,11 +31,6 @@ $(document).ready(function() {
           "</li>"
       );
     });
-
-    $("<ul/>", {
-      class: "contactList",
-      html: items.join("")
-    }).appendTo(".contacts");
   });
 
   $.getJSON("/message", function(data) {

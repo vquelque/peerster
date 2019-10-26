@@ -50,7 +50,7 @@ func (gsp *Gossiper) msgHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
 		var rumorMessageList []message.RumorMessage
-		rumorMessageList = gsp.rumors.GetAll()
+		rumorMessageList = gsp.rumorStorage.GetAll()
 		mmsgListJSON, err := json.Marshal(rumorMessageList)
 		if err != nil {
 			return
@@ -103,6 +103,16 @@ func (gsp *Gossiper) contactsHandler(w http.ResponseWriter, r *http.Request) {
 func (gsp *Gossiper) privateMsgHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
+		peer := r.FormValue("peer")
+		http.Redirect(w, r, r.Header.Get("/private"), 302)
+		m := gsp.privateStorage.GetAllForPeer(peer)
+		mJSON, err := json.Marshal(m)
+		if err != nil {
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(mJSON)
 	}
 }
 

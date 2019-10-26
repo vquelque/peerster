@@ -20,13 +20,12 @@ func NewPrivateStorage() *PrivateStorage {
 }
 
 // Store private message to storage
-func (storage *PrivateStorage) Store(message *message.PrivateMessage) {
+func (storage *PrivateStorage) Store(message *message.PrivateMessage, peer string) {
 	storage.lock.Lock()
 	defer storage.lock.Unlock()
-	origin := message.Origin
-	archive := storage.messages[origin]
+	archive := storage.messages[peer]
 	archive = append(archive, *message)
-	storage.messages[origin] = archive
+	storage.messages[peer] = archive
 }
 
 // Get last private message for peer from storage

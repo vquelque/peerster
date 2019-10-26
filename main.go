@@ -31,9 +31,10 @@ type Gossiper struct {
 	peersSocket           socket.Socket
 	uiSocket              socket.Socket
 	vectorClock           *vector.Vector        //current status of this peer.
-	rumors                *storage.RumorStorage //store all previously received rumors.
-	active                *sync.WaitGroup       //active go routines.
-	waitingForAck         *observer.Observer    //registered go routines channels waiting for an ACK.
+	rumorStorage          *storage.RumorStorage //store all previously received rumors.
+	privateStorage        *storage.PrivateStorage
+	active                *sync.WaitGroup    //active go routines.
+	waitingForAck         *observer.Observer //registered go routines channels waiting for an ACK.
 	antiEntropyTimer      int
 	resetAntiEntropyTimer chan bool
 	routing               *routing.Routing
@@ -61,7 +62,8 @@ func newGossiper(address string, name string, uiPort int, peersList string, simp
 
 	peersSet := peers.NewPeersSet(peersList)
 	vectorClock := vector.NewVector()
-	storage := storage.NewRumorStorage()
+	rumorStorage := storage.NewRumorStorage()
+	privateStorage := storage.NewPrivateStorage()
 	waitingForAck := observer.Init()
 	resetAntiEntropyChan := make(chan (bool))
 	routing := routing.NewRoutingTable()
@@ -73,7 +75,8 @@ func newGossiper(address string, name string, uiPort int, peersList string, simp
 		peersSocket:           peersSocket,
 		uiSocket:              uiSocket,
 		vectorClock:           vectorClock,
-		rumors:                storage,
+		rumorStorage:          rumorStorage,
+		privateStorage:        privateStorage,
 		waitingForAck:         waitingForAck,
 		active:                &sync.WaitGroup{},
 		antiEntropyTimer:      antiEntropyTimer,

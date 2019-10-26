@@ -22,7 +22,7 @@ func (gsp *Gossiper) processRumorMessage(msg *message.RumorMessage, sender strin
 		// we were waiting for this message
 		// increase mID for peer and store message
 		gsp.vectorClock.IncrementMIDForPeer(msg.Origin)
-		gsp.rumors.Store(msg)
+		gsp.rumorStorage.Store(msg)
 		//pick random peer and rumormonger
 		randPeer := gsp.peers.PickRandomPeer(sender)
 		if randPeer != "" {
@@ -108,7 +108,7 @@ func (gsp *Gossiper) synchronizeWithPeer(same bool, toAsk []vector.PeerStatus, t
 	if len(toSend) > 0 {
 		// we have new messages to send to the peer : start mongering
 		//get the rumor we need to send from storage
-		rumorMsg := gsp.rumors.Get(toSend[0].Identifier, toSend[0].NextID)
+		rumorMsg := gsp.rumorStorage.Get(toSend[0].Identifier, toSend[0].NextID)
 		gsp.rumormonger(rumorMsg, peerAddr)
 	} else if len(toAsk) > 0 {
 		// send status for triggering peer mongering

@@ -6,14 +6,6 @@ import (
 	"github.com/vquelque/Peerster/message"
 )
 
-type Storage interface {
-	NewStorage() *Storage
-	Store()
-	Get(peer string, ID string)
-	GetAllForPeer(peer string)
-	GetAll()
-}
-
 // Stores the previously received rumors.
 type RumorStorage struct {
 	// use a map to store the previous rumors. Key corresponds to peer origin.
