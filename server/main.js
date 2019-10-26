@@ -20,7 +20,7 @@ $(document).ready(function() {
       req = "/private.html?peer=" + key;
       $(".contactList").append(
         "<li class='contactItem'>" +
-          "<a target='_blank' rel='noopener noreferrer' href=" +
+          "<a target='popup' rel='noopener noreferrer' href=" +
           req +
           ">" +
           key +

@@ -22,9 +22,15 @@ $(document).ready(function() {
     }).appendTo("#chatbox");
   });
 
-  $("#send").click(function() {
-    $.post(reqURL, $("#chat").serialize(), function(data) {
-      $(location).attr("href", "private.html?peer=" + peer);
+  $("#chat").submit(function(event) {
+    event.preventDefault(); //prevent default action
+    $.ajax({
+      url: reqURL,
+      type: "POST",
+      data: $(this).serialize()
+    }).done(function(response) {
+      //
+      location.reload();
     });
   });
 });
