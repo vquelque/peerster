@@ -86,6 +86,20 @@ func (gsp *Gossiper) idHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (gsp *Gossiper) contactsHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case "GET":
+		contacts := gsp.routing.GetAllRoutes()
+		contactsJSON, err := json.Marshal(contacts)
+		if err != nil {
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(contactsJSON)
+	}
+}
+
 // StartUIServer starts the UI server
 func StartUIServer(UIPort int, gsp *Gossiper) *http.Server {
 
@@ -95,6 +109,7 @@ func StartUIServer(UIPort int, gsp *Gossiper) *http.Server {
 	mux.HandleFunc("/id", gsp.idHandler)
 	mux.HandleFunc("/peers", gsp.peersListHandler)
 	mux.HandleFunc("/message", gsp.msgHandler)
+	mux.HandleFunc("/contacts", gsp.contactsHandler)
 	server := &http.Server{Addr: UIPortStr, Handler: mux}
 	go func() {
 		if err := server.ListenAndServe(); err != nil {

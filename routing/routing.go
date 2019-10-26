@@ -86,3 +86,12 @@ func (rt *Routing) String() string {
 	}
 	return str
 }
+
+// GetAllRoutes returns a new map with origins and corresponding route names
+func (rt *Routing) GetAllRoutes() map[string]string {
+	allRoutes := make(map[string]string)
+	for origin, route := range rt.routes {
+		allRoutes[origin] = route
+	}
+	return allRoutes
+}
