@@ -1,4 +1,4 @@
-package main
+package gossiper
 
 import (
 	"fmt"
@@ -10,7 +10,7 @@ import (
 
 // Sends a status packet to the given address.
 func (gsp *Gossiper) sendStatusPacket(addr string) {
-	sp := gsp.vectorClock.StatusPacket()
+	sp := gsp.VectorClock.StatusPacket()
 	gp := &GossipPacket{StatusPacket: &sp}
 	gsp.send(gp, addr)
 }
@@ -18,13 +18,13 @@ func (gsp *Gossiper) sendStatusPacket(addr string) {
 // Processes incoming status packets.
 func (gsp *Gossiper) processStatusPacket(sp *vector.StatusPacket, sender string) {
 	fmt.Print(sp.StringStatusWithSender(sender))
-	gsp.peers.Add(sender)
+	gsp.Peers.Add(sender)
 	//reset anti entropy timer
-	gsp.resetAntiEntropyTimer <- true
+	gsp.ResetAntiEntropyTimer <- true
 
-	same, toAsk, toSend := gsp.vectorClock.CompareWithStatusPacket(*sp)
+	same, toAsk, toSend := gsp.VectorClock.CompareWithStatusPacket(*sp)
 
-	observerChan := gsp.waitingForAck.GetObserver(sender)
+	observerChan := gsp.WaitingForAck.GetObserver(sender)
 	if observerChan != nil {
 		// A registered routine was expecting a status packet.
 		// Forward the result of the comparison to the routine to potentially
@@ -40,7 +40,7 @@ func (gsp *Gossiper) processStatusPacket(sp *vector.StatusPacket, sender string)
 
 // Handles the anti entropy timer
 func (gsp *Gossiper) startAntiEntropyHandler() {
-	antiEntropyDuration := time.Duration(gsp.antiEntropyTimer) * time.Second
+	antiEntropyDuration := time.Duration(gsp.AntiEntropyTimer) * time.Second
 	timer := time.NewTicker(antiEntropyDuration)
 	go func() {
 		for {
@@ -48,11 +48,11 @@ func (gsp *Gossiper) startAntiEntropyHandler() {
 			case <-timer.C:
 				// timer elapsed : send status packet to randomly chosen peer
 				// log.Println("No STATUS received : sending random STATUS")
-				randPeer := gsp.peers.PickRandomPeer("")
+				randPeer := gsp.Peers.PickRandomPeer("")
 				if randPeer != "" {
 					gsp.sendStatusPacket(randPeer)
 				}
-			case <-gsp.resetAntiEntropyTimer:
+			case <-gsp.ResetAntiEntropyTimer:
 				// timer reset : we received a status packet
 				// log.Println("Received STATUS : Resetting anti entropy timer")
 				timer = time.NewTicker(antiEntropyDuration)

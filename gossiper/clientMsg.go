@@ -1,4 +1,4 @@
-package main
+package gossiper
 
 import (
 	"fmt"
@@ -9,19 +9,19 @@ import (
 // ProcessClientMessage processes client messages
 func (gsp *Gossiper) ProcessClientMessage(msg *message.Message) {
 	fmt.Println(msg.String())
-	if gsp.simple {
-		gp := &GossipPacket{Simple: message.NewSimpleMessage(msg.Text, gsp.name, gsp.peersSocket.Address())}
+	if gsp.Simple {
+		gp := &GossipPacket{Simple: message.NewSimpleMessage(msg.Text, gsp.Name, gsp.PeersSocket.Address())}
 		//broadcast packet
-		gsp.broadcastPacket(gp, gsp.peersSocket.Address())
+		gsp.broadcastPacket(gp, gsp.PeersSocket.Address())
 	} else {
 		if msg.Destination != "" {
 			//private message
-			m := message.NewPrivateMessage(gsp.name, msg.Text, msg.Destination, defaultHopLimit)
+			m := message.NewPrivateMessage(gsp.Name, msg.Text, msg.Destination, defaultHopLimit)
 			gsp.processPrivateMessage(m)
 		} else {
 			//rumor message
-			mID := gsp.vectorClock.NextMessageForPeer(gsp.name)
-			m := message.NewRumorMessage(gsp.name, mID, msg.Text)
+			mID := gsp.VectorClock.NextMessageForPeer(gsp.Name)
+			m := message.NewRumorMessage(gsp.Name, mID, msg.Text)
 			gsp.processRumorMessage(m, "")
 		}
 	}

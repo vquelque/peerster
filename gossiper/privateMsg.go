@@ -1,4 +1,4 @@
-package main
+package gossiper
 
 import (
 	"fmt"
@@ -7,7 +7,7 @@ import (
 )
 
 func (gsp *Gossiper) processPrivateMessage(msg *message.PrivateMessage) {
-	if msg.Destination != gsp.name {
+	if msg.Destination != gsp.Name {
 		if msg.HopLimit == 0 {
 			return
 		}
@@ -15,7 +15,7 @@ func (gsp *Gossiper) processPrivateMessage(msg *message.PrivateMessage) {
 		return
 	}
 	// this private message is for us
-	gsp.privateStorage.Store(msg, msg.Origin)
+	gsp.PrivateStorage.Store(msg, msg.Origin)
 	fmt.Println(msg.String())
 }
 
@@ -23,12 +23,12 @@ func (gsp *Gossiper) processPrivateMessage(msg *message.PrivateMessage) {
 func (gsp *Gossiper) sendPrivateMessage(msg *message.PrivateMessage) {
 	gp := &GossipPacket{Private: msg}
 	msg.HopLimit--
-	nextHopAddr := gsp.routing.GetRoute(msg.Destination)
+	nextHopAddr := gsp.Routing.GetRoute(msg.Destination)
 	// println("sending private message to " + msg.Destination + " via " + nextHopAddr)
 	if nextHopAddr != "" {
-		if msg.Origin == gsp.name {
+		if msg.Origin == gsp.Name {
 			// we are the origin of this message --> store it to retrieve it in conversation
-			gsp.privateStorage.Store(msg, msg.Destination)
+			gsp.PrivateStorage.Store(msg, msg.Destination)
 		}
 		gsp.send(gp, nextHopAddr)
 	}
