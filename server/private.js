@@ -2,25 +2,25 @@ $(document).ready(function() {
   var peer = getUrlVars()["peer"];
   var reqURL = "/privateMsg?peer=" + peer;
   $("#peerID").html(peer);
+  fetchMessages();
 
-  $.getJSON(reqURL, function(data) {
-    var items = [];
-    $.each(data, function(key, val) {
-      var str =
-        "<strong> PRIVATE MESSAGE </strong> " +
-        " <strong> from </strong> " +
-        val.Origin +
-        "<br>" +
-        "<strong> MESSAGE : </strong>" +
-        val.Text;
-      items.push("<li id='" + key + "' class='msgItem'>" + str + "</li>");
+  function fetchMessages() {
+    $.getJSON(reqURL, function(data) {
+      var items = [];
+      $.each(data, function(key, val) {
+        var str =
+          "<strong> PRIVATE MESSAGE </strong> " +
+          " <strong> from </strong> " +
+          val.Origin +
+          "<br>" +
+          "<strong> MESSAGE : </strong>" +
+          val.Text;
+        items.push("<li id='" + key + "' class='msgItem'>" + str + "</li>");
+      });
+
+      $(".msgList").html(items.join(""));
     });
-
-    $("<ul/>", {
-      class: "msgList",
-      html: items.join("")
-    }).appendTo("#chatbox");
-  });
+  }
 
   $("#chat").submit(function(event) {
     event.preventDefault(); //prevent default action
@@ -29,10 +29,12 @@ $(document).ready(function() {
       type: "POST",
       data: $(this).serialize()
     }).done(function(response) {
-      //
-      location.reload();
+      $("#chat")[0].reset();
+      fetchMessages();
     });
   });
+
+  setInterval(fetchMessages, 1000); //fetch messages every seconds
 });
 
 // Read a page's GET URL variables and return them as an associative array.

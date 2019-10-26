@@ -2,18 +2,18 @@ $(document).ready(function() {
   $.getJSON("/id", function(data) {
     $("#peerID").html(data);
   });
+  fetchMessages();
+  getPeers();
 
-  $.getJSON("/peers", function(data) {
-    var items = [];
-    $.each(data, function(key, val) {
-      items.push("<li id='" + key + "' class='peerItem'>" + val + "</li>");
+  function getPeers() {
+    $.getJSON("/peers", function(data) {
+      var items = [];
+      $.each(data, function(key, val) {
+        items.push("<li id='" + key + "' class='peerItem'>" + val + "</li>");
+      });
+      $(".peerList").html(items.join(""));
     });
-
-    $("<ul/>", {
-      class: "peerList",
-      html: items.join("")
-    }).appendTo(".peers");
-  });
+  }
 
   $.getJSON("/contacts", function(data) {
     $.each(data, function(key, val) {
@@ -33,24 +33,38 @@ $(document).ready(function() {
     });
   });
 
-  $.getJSON("/message", function(data) {
-    var items = [];
-    $.each(data, function(key, val) {
-      var mID = parseInt(val.ID);
-      var str =
-        "<strong> Rumor ID </strong> " +
-        mID +
-        " <strong> from </strong> " +
-        val.Origin +
-        "<br>" +
-        "<strong> MESSAGE : </strong>" +
-        val.Text;
-      items.push("<li id='" + key + "' class='msgItem'>" + str + "</li>");
+  $("#chat").submit(function(event) {
+    event.preventDefault(); //prevent default action
+    $.ajax({
+      url: "/message",
+      type: "POST",
+      data: $(this).serialize()
+    }).done(function(response) {
+      $("#chat")[0].reset();
+      fetchMessages();
+      getPeers();
     });
-
-    $("<ul/>", {
-      class: "msgList",
-      html: items.join("")
-    }).appendTo("#chatbox");
   });
+
+  function fetchMessages() {
+    $.getJSON("/message", function(data) {
+      var items = [];
+      $.each(data, function(key, val) {
+        var mID = parseInt(val.ID);
+        var str =
+          "<strong> Rumor ID </strong> " +
+          mID +
+          " <strong> from </strong> " +
+          val.Origin +
+          "<br>" +
+          "<strong> MESSAGE : </strong>" +
+          val.Text;
+        items.push("<li id='" + key + "' class='msgItem'>" + str + "</li>");
+      });
+
+      $(".msgList").html(items.join(""));
+    });
+  }
+
+  setInterval(fetchMessages, 1000); //fetch messages every seconds
 });
