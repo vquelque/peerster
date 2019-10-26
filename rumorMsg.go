@@ -36,10 +36,10 @@ func (gsp *Gossiper) processRumorMessage(msg *message.RumorMessage, sender strin
 	}
 
 	// acknowledge the packet if not sent by client
-	if sender != "" && msg.Origin != gsp.name {
+	if sender != "" {
 		gsp.sendStatusPacket(sender)
-		println(gsp.routing.String())
-		if msg.Text != "" {
+		// println(gsp.routing.String())
+		if msg.Text != "" && msg.Origin != gsp.name {
 			// Print DSDV only when not route runor
 			fmt.Println(gsp.routing.PrintUpdate(msg.Origin))
 		}

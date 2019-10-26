@@ -23,7 +23,7 @@ func (gsp *Gossiper) sendPrivateMessage(msg *message.PrivateMessage) {
 	gp := &GossipPacket{Private: msg}
 	msg.HopLimit--
 	nextHopAddr := gsp.routing.GetRoute(msg.Destination)
-	println("sending private message to " + msg.Destination + " via " + nextHopAddr)
+	// println("sending private message to " + msg.Destination + " via " + nextHopAddr)
 	if nextHopAddr != "" {
 		gsp.send(gp, nextHopAddr)
 	}
