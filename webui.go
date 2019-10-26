@@ -50,7 +50,7 @@ func (gsp *Gossiper) msgHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
 		var rumorMessageList []message.RumorMessage
-		rumorMessageList = gsp.rumors.GetAllRumors()
+		rumorMessageList = gsp.rumors.GetAll()
 		mmsgListJSON, err := json.Marshal(rumorMessageList)
 		if err != nil {
 			return
@@ -100,6 +100,12 @@ func (gsp *Gossiper) contactsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (gsp *Gossiper) privateMsgHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case "GET":
+	}
+}
+
 // StartUIServer starts the UI server
 func StartUIServer(UIPort int, gsp *Gossiper) *http.Server {
 
@@ -110,6 +116,7 @@ func StartUIServer(UIPort int, gsp *Gossiper) *http.Server {
 	mux.HandleFunc("/peers", gsp.peersListHandler)
 	mux.HandleFunc("/message", gsp.msgHandler)
 	mux.HandleFunc("/contacts", gsp.contactsHandler)
+	mux.HandleFunc("/privateMsg", gsp.privateMsgHandler)
 	server := &http.Server{Addr: UIPortStr, Handler: mux}
 	go func() {
 		if err := server.ListenAndServe(); err != nil {

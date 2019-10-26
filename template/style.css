@@ -38,29 +38,35 @@ a:hover {
 .column {
   flex: 50%;
 }
+
 #wrapper {
   margin: 0 auto;
   padding-bottom: 25px;
   background: #ebf4fb;
-  width: 504px;
+  width: 500px;
   border: 1px solid #acd8f0;
 }
 
 #peerWrapper {
   margin: 0 auto;
-  padding-bottom: 25px;
   background: rgb(218, 250, 222);
-  width: 504px;
+  width: 500px;
   border: 1px solid rgb(238, 241, 50);
-  height: 234px;
 }
 
 #managePeerWrapper {
   margin: 0 auto;
   padding-bottom: 25px;
   background: rgb(170, 238, 255);
-  width: 504px;
+  width: 500px;
   border: 1px solid rgb(253, 138, 118);
+}
+
+#contactsWrapper {
+  margin: 0 auto;
+  background: rgba(236, 152, 232, 0.945);
+  width: 500px;
+  border: 1px solid rgb(255, 6, 222);
 }
 
 #loginform {
@@ -77,7 +83,7 @@ a:hover {
   margin-bottom: 25px;
   padding: 10px;
   background: #fff;
-  height: 270px;
+  height: 360px;
   width: 430px;
   border: 1px solid #acd8f0;
   overflow: auto;
@@ -91,7 +97,7 @@ a:hover {
 }
 
 #usermsg {
-  width: 395px;
+  width: 400px;
   border: 1px solid #acd8f0;
 }
 
@@ -122,7 +128,13 @@ a:hover {
 .peerList {
   list-style: none;
   margin: 0 auto;
-  padding: 0px ;
+  padding: 0px;
+}
+
+.contactList {
+  list-style: none;
+  margin: 0 auto;
+  padding: 0px;
 }
 
 .msgList {
@@ -143,7 +155,7 @@ a:hover {
   margin-bottom: 25px;
   padding: 10px;
   background: rgb(226, 228, 226);
-  height: 170px;
+  height: 70px;
   width: 430px;
   border: 1px solid #acd8f0;
   overflow: auto;
@@ -151,4 +163,16 @@ a:hover {
 
 .peerItem {
   margin-bottom: 3px;
+}
+
+.contacts {
+  text-align: left;
+  margin: 0 auto;
+  margin-bottom: 25px;
+  padding: 10px;
+  background: rgb(226, 228, 226);
+  height: 70px;
+  width: 430px;
+  border: 1px solid #acd8f0;
+  overflow: auto;
 }

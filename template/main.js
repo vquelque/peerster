@@ -15,6 +15,27 @@ $(document).ready(function() {
     }).appendTo(".peers");
   });
 
+  $.getJSON("/contacts", function(data) {
+    var items = [];
+    $.each(data, function(key, val) {
+      items.push(
+        "<li class='contactItem'>" +
+          "<a href=''>" +
+          key +
+          "</a>" +
+          " (via " +
+          val +
+          ")" +
+          "</li>"
+      );
+    });
+
+    $("<ul/>", {
+      class: "contactList",
+      html: items.join("")
+    }).appendTo(".contacts");
+  });
+
   $.getJSON("/message", function(data) {
     var items = [];
     $.each(data, function(key, val) {

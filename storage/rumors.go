@@ -6,8 +6,16 @@ import (
 	"github.com/vquelque/Peerster/message"
 )
 
+type Storage interface {
+	NewStorage() *Storage
+	Store()
+	Get(peer string, ID string)
+	GetAllForPeer(peer string)
+	GetAll()
+}
+
 // Stores the previously received rumors.
-type Storage struct {
+type RumorStorage struct {
 	// use a map to store the previous rumors. Key corresponds to peer origin.
 	// value is a slice with all rumors for a given peer with IDs starting at 0.
 	rumors      map[string][]message.RumorMessage
@@ -17,15 +25,15 @@ type Storage struct {
 }
 
 // NewStorage creates a new storage to store rumors
-func NewStorage() *Storage {
-	st := &Storage{
+func NewRumorStorage() *RumorStorage {
+	st := &RumorStorage{
 		rumors:      make(map[string][]message.RumorMessage),
 		rumor_order: make([]string, 0)}
 	return st
 }
 
 // StoreRumor stores a rumor message
-func (storage *Storage) StoreRumor(rumor *message.RumorMessage) {
+func (storage *RumorStorage) Store(rumor *message.RumorMessage) {
 	storage.lock.Lock()
 	defer storage.lock.Unlock()
 	origin := rumor.Origin
@@ -39,17 +47,17 @@ func (storage *Storage) StoreRumor(rumor *message.RumorMessage) {
 }
 
 // GetRumor gets the rumor from storage
-func (storage *Storage) GetRumor(peer string, rumorId uint32) *message.RumorMessage {
+func (storage *RumorStorage) Get(peer string, ID uint32) *message.RumorMessage {
 	storage.lock.RLock()
 	defer storage.lock.RUnlock()
 	archive, found := storage.rumors[peer]
-	if !found || rumorId > uint32(len(archive)+1) {
+	if !found || ID > uint32(len(archive)+1) {
 		// we did not store this rumor previously => problem.
 		return nil
 	}
-	return &archive[rumorId-1]
+	return &archive[ID-1]
 }
-func (storage *Storage) GetAllRumorsForPeer(peer string) []message.RumorMessage {
+func (storage *RumorStorage) GetAllForPeer(peer string) []message.RumorMessage {
 	storage.lock.RLock()
 	defer storage.lock.RUnlock()
 	rumors := make([]message.RumorMessage, 0)
@@ -61,7 +69,7 @@ func (storage *Storage) GetAllRumorsForPeer(peer string) []message.RumorMessage 
 }
 
 // GetAllRumors return all the rumors in the order they were added.
-func (storage *Storage) GetAllRumors() []message.RumorMessage {
+func (storage *RumorStorage) GetAll() []message.RumorMessage {
 	storage.lock.RLock()
 	defer storage.lock.RUnlock()
 	rID := make(map[string]int, len(storage.rumor_order))
