@@ -61,6 +61,7 @@ func (rt *Routing) UpdateRoute(msg *message.RumorMessage, sender string) {
 	rt.lock.Lock()
 	defer rt.lock.Unlock()
 	origin := msg.Origin
+	print("update route for " + origin + " : " + sender)
 	if msg.ID == 1 {
 		// initial message
 		rt.routes[origin] = sender
@@ -73,4 +74,15 @@ func (rt *Routing) UpdateRoute(msg *message.RumorMessage, sender string) {
 			rt.routes[origin] = sender
 		}
 	}
+}
+
+func (rt *Routing) String() string {
+	rt.lock.RLock()
+	defer rt.lock.RUnlock()
+	str := "Routing table :"
+	for origin, route := range rt.routes {
+		str += "\n"
+		str += origin + " : " + route
+	}
+	return str
 }

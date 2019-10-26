@@ -13,7 +13,7 @@ import (
 // Procecces incoming rumor message.
 func (gsp *Gossiper) processRumorMessage(msg *message.RumorMessage, sender string) {
 	//if sender is nil then it is a client message
-	if sender != "" {
+	if sender != "" && msg.Origin != gsp.name {
 		fmt.Println(msg.PrintRumor(sender))
 		gsp.peers.Add(sender)
 	}
@@ -30,13 +30,15 @@ func (gsp *Gossiper) processRumorMessage(msg *message.RumorMessage, sender strin
 		} else {
 			log.Print("No other peers to forward rumor message")
 		}
+		if sender != "" {
+			gsp.routing.UpdateRoute(msg, sender) //update routing table
+		}
 	}
 
 	// acknowledge the packet if not sent by client
-	if sender != "" {
+	if sender != "" && msg.Origin != gsp.name {
 		gsp.sendStatusPacket(sender)
-		gsp.routing.UpdateRoute(msg, sender) //update routing table
-
+		println(gsp.routing.String())
 		if msg.Text != "" {
 			// Print DSDV only when not route runor
 			fmt.Println(gsp.routing.PrintUpdate(msg.Origin))
