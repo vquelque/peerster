@@ -21,6 +21,12 @@ $(document).ready(function() {
       html: items.join("")
     }).appendTo("#chatbox");
   });
+
+  $("#send").click(function() {
+    $.post(reqURL, $("#chat").serialize(), function(data) {
+      $(location).attr("href", "private.html?peer=" + peer);
+    });
+  });
 });
 
 // Read a page's GET URL variables and return them as an associative array.

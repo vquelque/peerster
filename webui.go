@@ -104,7 +104,6 @@ func (gsp *Gossiper) privateMsgHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
 		peer := r.FormValue("peer")
-		print(peer)
 		m := gsp.privateStorage.GetAllForPeer(peer)
 		mJSON, err := json.Marshal(m)
 		if err != nil {
@@ -113,6 +112,20 @@ func (gsp *Gossiper) privateMsgHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write(mJSON)
+	case "POST":
+		print("POST")
+		if err := r.ParseForm(); err != nil {
+			fmt.Fprintf(w, "ParseForm() err: %v", err)
+			return
+		}
+		peer := r.FormValue("peer")
+		messageText := r.FormValue("message")
+		print(messageText)
+		cliMsg := &message.Message{Text: messageText, Destination: peer}
+		gsp.ProcessClientMessage(cliMsg)
+		http.Redirect(w, r, r.Header.Get("/privateMsg?peer="+peer), 302)
+	default:
+		fmt.Fprintf(w, "Sorry, only GET and POST methods are supported.")
 	}
 }
 
