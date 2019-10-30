@@ -37,3 +37,6 @@
 
 #Executable
 Peerster
+
+#Files
+_sharedFiles/*
