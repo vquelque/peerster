@@ -39,12 +39,21 @@ a:hover {
   flex: 50%;
 }
 
-#wrapper {
+#chatWrapper {
   margin: 0 auto;
   padding-bottom: 25px;
   background: #ebf4fb;
   width: 500px;
   border: 1px solid #acd8f0;
+}
+
+#fileUploadWrapper {
+  margin: 0 auto;
+  padding-bottom: 25px;
+  background: #ebf4fb;
+  width: 500px;
+  border: 1px solid #acd8f0;
+  margin-top: 15px;
 }
 
 #peerWrapper {

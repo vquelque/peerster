@@ -18,6 +18,8 @@ func (gsp *Gossiper) ProcessClientMessage(msg *message.Message) {
 			//private message
 			m := message.NewPrivateMessage(gsp.Name, msg.Text, msg.Destination, defaultHopLimit)
 			gsp.processPrivateMessage(m)
+		} else if msg.File != "" {
+			go gsp.processFile(msg.File)
 		} else {
 			//rumor message
 			mID := gsp.VectorClock.NextMessageForPeer(gsp.Name)

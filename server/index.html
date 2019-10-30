@@ -13,7 +13,8 @@
     <div class="content">
       <div class="row">
         <div class="column">
-          <div id="wrapper">
+
+          <div id="chatWrapper">
             <div id="menu">
               <p class="welcome">Welcome <span id="peerID"></span> !</p>
               <div style="clear:both"></div>
@@ -28,6 +29,19 @@
               <input type="button" id="send" value="Send !"></button>
             </form>
           </div>
+
+          <div id="fileUploadWrapper">
+              <h2>Upload a file :</h2>
+              <form
+              enctype="multipart/form-data"
+              action="/uploadFile"
+              method="post"
+            >
+              <input type="file" name="myFile" />
+              <input type="submit" value="upload" />
+            </form>
+          </div>
+
         </div>
         <div class="column">
           <div id="peerWrapper">

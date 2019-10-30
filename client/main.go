@@ -7,14 +7,17 @@ import (
 	"net"
 
 	"github.com/dedis/protobuf"
+	"github.com/vquelque/Peerster/gossiper"
 	"github.com/vquelque/Peerster/message"
+	"github.com/vquelque/Peerster/utils"
 )
 
 func main() {
 
 	uiPort := flag.Int("UIPort", 8080, "Port for the UI client (default 8080)")
-	msg := flag.String("msg", "", "message to be sent; if the -dest flag is present, this is a private message, otherwise it’s a rumor message")
+	text := flag.String("msg", "", "message to be sent; if the -dest flag is present, this is a private message, otherwise it’s a rumor message")
 	destination := flag.String("dest", "", "destination for the private message. can be omitted")
+	file := flag.String("file", "", "file to be indexed by the gossiper")
 
 	flag.Parse()
 
@@ -26,12 +29,17 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	message := message.Message{Text: *msg}
+	msg := message.Message{Text: *text}
 	if *destination != "" {
-		message.Destination = *destination
+		msg.Destination = *destination
 	}
 
-	pkt, err := protobuf.Encode(&message)
+	if *file != "" {
+		utils.CopyFile(*file, gossiper.FileTempDirectory)
+		msg = message.Message{File: *file}
+	}
+
+	pkt, err := protobuf.Encode(&msg)
 
 	if err != nil {
 		log.Fatalln(err)

@@ -3,8 +3,10 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/vquelque/Peerster/gossiper"
@@ -65,7 +67,7 @@ func msgHandler(gsp *gossiper.Gossiper) http.HandlerFunc {
 		case "POST":
 			http.Redirect(w, r, r.Header.Get("/"), 302)
 			if err := r.ParseForm(); err != nil {
-				fmt.Fprintf(w, "ParseForm() err: %v", err)
+				http.Error(w, "Invalid Data", http.StatusBadRequest)
 				return
 			}
 			messageText := r.FormValue("message")
@@ -123,9 +125,8 @@ func privateMsgHandler(gsp *gossiper.Gossiper) http.HandlerFunc {
 			w.WriteHeader(http.StatusOK)
 			w.Write(mJSON)
 		case "POST":
-			print("POST")
 			if err := r.ParseForm(); err != nil {
-				fmt.Fprintf(w, "ParseForm() err: %v", err)
+				http.Error(w, "Invalid Data", http.StatusBadRequest)
 				return
 			}
 			peer := r.FormValue("peer")
@@ -140,6 +141,42 @@ func privateMsgHandler(gsp *gossiper.Gossiper) http.HandlerFunc {
 	})
 }
 
+func fileUploadHandler(gsp *gossiper.Gossiper) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "POST":
+			filename, err := fileUploadHelper(r)
+			if err != nil {
+				http.Error(w, "Invalid Data", http.StatusBadRequest)
+				return
+				//checking whether any error occurred retrieving image
+			}
+			cliMsg := &message.Message{File: filename}
+			//	println(filename)
+			gsp.ProcessClientMessage(cliMsg)
+			http.Redirect(w, r, r.Header.Get("/"), 302)
+		}
+	})
+}
+
+//this function returns the filename of the saved file or an error if it occurs
+func fileUploadHelper(r *http.Request) (string, error) {
+	r.ParseMultipartForm(32 << 20)             //limit file size to 32 MB
+	file, handler, err := r.FormFile("myFile") //retrieve the file from form data
+	if err != nil {
+		return "", err
+	}
+	defer file.Close() //close the file when we finish
+	//this is path which  we want to store the file
+	f, err := os.OpenFile("_SharedFiles/"+handler.Filename, os.O_WRONLY|os.O_CREATE, 0666)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	io.Copy(f, file)
+	return handler.Filename, nil
+}
+
 // StartUIServer starts the UI server
 func StartUIServer(UIPort int, gsp *gossiper.Gossiper) *http.Server {
 
@@ -151,6 +188,7 @@ func StartUIServer(UIPort int, gsp *gossiper.Gossiper) *http.Server {
 	mux.HandleFunc("/message", msgHandler(gsp))
 	mux.HandleFunc("/contacts", contactsHandler(gsp))
 	mux.HandleFunc("/privateMsg", privateMsgHandler(gsp))
+	mux.HandleFunc("/uploadFile", fileUploadHandler(gsp))
 	server := &http.Server{Addr: UIPortStr, Handler: mux}
 	go func() {
 		if err := server.ListenAndServe(); err != nil {
