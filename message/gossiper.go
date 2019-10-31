@@ -25,6 +25,21 @@ type PrivateMessage struct {
 	HopLimit    uint32
 }
 
+type DataRequest struct {
+	Origin      string
+	Destination string
+	HopLimit    uint32
+	HashValue   []byte //hash of chunk or metafile if file request
+}
+
+type DataReply struct {
+	Origin      string
+	Destination string
+	HopLimit    uint32
+	HashValue   []byte
+	Data        []byte
+}
+
 //NewSimpleMessage creates a new simpleMessage.
 func NewSimpleMessage(contents string, originalName string, relayPeerAddr string) *SimpleMessage {
 	return &SimpleMessage{
@@ -66,6 +81,21 @@ func NewRouteRumorMessage(origin string, ID uint32) *RumorMessage {
 		ID:     ID,
 		Text:   "",
 	}
+}
+
+// Set hop limit to 0 for default value (10)
+func NewDataReply(origin string, hoplimit uint32, request *DataRequest, data []byte) *DataReply {
+	if hoplimit <= 0 {
+		hoplimit = 10 //default hoplimit
+	}
+	d := &DataReply{
+		Origin:      origin,
+		Destination: request.Origin,
+		HopLimit:    hoplimit,
+		HashValue:   request.HashValue,
+		Data:        data,
+	}
+	return d
 }
 
 //Prints a RumorMessage

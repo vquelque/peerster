@@ -7,26 +7,13 @@ import (
 	"log"
 	"os"
 
+	"github.com/vquelque/Peerster/message"
 	"github.com/vquelque/Peerster/storage"
+	"github.com/vquelque/Peerster/utils"
 )
 
 const ChunkSize = 8000 //in bytes
 const FileTempDirectory = "./_sharedFiles/"
-
-type DataRequest struct {
-	Origin      string
-	Destination string
-	HopLimit    uint32
-	HashValue   []byte //hash of chunk or metafile if file request
-}
-
-type DataReply struct {
-	Origin      string
-	Destination string
-	HopLimit    uint32
-	HashValue   []byte
-	Data        []byte
-}
 
 func (gsp *Gossiper) processFile(filename string) {
 	fileURI := FileTempDirectory + filename
@@ -66,4 +53,46 @@ func (gsp *Gossiper) processFile(filename string) {
 	f := &storage.File{Name: filename, MetafileHash: metaHash}
 	gsp.FileStorage.StoreFile(f, metafile)
 	fmt.Printf("File stored in memory. Metahash : %x\n", metaHash)
+}
+
+func (gsp *Gossiper) processDataRequest(dr *message.DataRequest) {
+	if dr.Destination != gsp.Name {
+		if dr.HopLimit == 0 {
+			return
+		}
+		gsp.forwardDataRequest(dr)
+		return
+	}
+	// this data request is for us
+	var hash utils.SHA256
+	copy(hash[:], dr.HashValue) //convert slice to hash array
+	data := gsp.FileStorage.GetChunkOrMeta(hash)
+	if data != nil {
+		r := message.NewDataReply(gsp.Name, 0, dr, data)
+		gsp.forwardDataReply(r)
+	}
+}
+
+func (gsp *Gossiper) processDataReply(msg *message.DataReply) {
+
+}
+
+func (gsp *Gossiper) forwardDataRequest(dr *message.DataRequest) {
+	gp := &GossipPacket{DataRequest: dr}
+	dr.HopLimit--
+	nextHopAddr := gsp.Routing.GetRoute(dr.Destination)
+	// println("sending data request to " + dr.Destination + " via " + nextHopAddr)
+	if nextHopAddr != "" {
+		gsp.send(gp, nextHopAddr)
+	}
+}
+
+func (gsp *Gossiper) forwardDataReply(r *message.DataReply) {
+	gp := &GossipPacket{DataReply: r}
+	r.HopLimit--
+	nextHopAddr := gsp.Routing.GetRoute(r.Destination)
+	// println("sending dara reply to " + r.Destination + " via " + nextHopAddr)
+	if nextHopAddr != "" {
+		gsp.send(gp, nextHopAddr)
+	}
 }

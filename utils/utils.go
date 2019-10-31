@@ -7,6 +7,8 @@ import (
 	"os"
 )
 
+type SHA256 = [32]byte
+
 // MapToUDP converts the given array of string addresses to an array of UDP addresses.
 func MapToUDP(vs []string) *[]net.UDPAddr {
 	vsm := make([]net.UDPAddr, len(vs))

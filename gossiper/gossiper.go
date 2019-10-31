@@ -45,6 +45,8 @@ type GossipPacket struct {
 	RumorMessage *message.RumorMessage
 	StatusPacket *vector.StatusPacket
 	Private      *message.PrivateMessage
+	DataRequest  *message.DataRequest
+	DataReply    *message.DataReply
 }
 
 // Encapsulate received messages from peers/client to put in the queue
@@ -189,6 +191,10 @@ func (gsp *Gossiper) processMessages(peerMsgs <-chan *receivedPackets, clientMsg
 				gsp.processStatusPacket(gp.StatusPacket, peerMsg.sender)
 			case gp.Private != nil:
 				gsp.processPrivateMessage(gp.Private)
+			case gp.DataRequest != nil:
+				gsp.processDataRequest(gp.DataRequest)
+			case gp.DataReply != nil:
+				gsp.processDataReply(gp.DataReply)
 			default:
 				log.Print("Error : more than one message or 3 NIL in GossipPacket")
 			}
