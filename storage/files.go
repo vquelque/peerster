@@ -2,6 +2,7 @@ package storage
 
 import (
 	"log"
+	"os"
 	"sync"
 
 	"github.com/vquelque/Peerster/utils"
@@ -10,7 +11,11 @@ import (
 type File struct {
 	Name         string
 	MetafileHash utils.SHA256
+	ChunkCount   uint32
+	Completed    bool
 }
+
+type Metafile []byte
 
 type Chunk struct {
 	Data []byte
@@ -22,7 +27,7 @@ type FileStorage struct {
 	filesLock     *sync.RWMutex
 	chunks        map[utils.SHA256]*Chunk //chunk hash -> chunk
 	chunksLock    *sync.RWMutex
-	metafiles     map[utils.SHA256][]byte //metafile hash -> metafile
+	metafiles     map[utils.SHA256]Metafile //metafile hash -> metafile
 	metafilesLock *sync.RWMutex
 }
 
@@ -32,7 +37,7 @@ func NewFileStorage() *FileStorage {
 		filesLock:     &sync.RWMutex{},
 		chunks:        make(map[utils.SHA256]*Chunk),
 		chunksLock:    &sync.RWMutex{},
-		metafiles:     make(map[utils.SHA256][]byte),
+		metafiles:     make(map[utils.SHA256]Metafile),
 		metafilesLock: &sync.RWMutex{},
 	}
 }
@@ -69,4 +74,40 @@ func (fs *FileStorage) GetChunkOrMeta(hash utils.SHA256) []byte {
 		log.Print("Hash problem : meta and chunk found for this hash")
 	}
 	return nil
+}
+
+func (fs *FileStorage) GetFile(hash utils.SHA256) *File {
+	fs.filesLock.RLock()
+	defer fs.filesLock.RUnlock()
+	f, found := fs.files[hash]
+	if !found {
+		return nil
+	}
+	return f
+}
+
+func (fs *FileStorage) GetMetafile(hash utils.SHA256) Metafile {
+	fs.metafilesLock.RLock()
+	defer fs.metafilesLock.RUnlock()
+	f, found := fs.metafiles[hash]
+	if !found {
+		return nil
+	}
+	return f
+}
+
+func (fs *FileStorage) StoreMetafile(metahash utils.SHA256, meta Metafile) {
+	fs.metafilesLock.Lock()
+	defer fs.metafilesLock.Unlock()
+	fs.metafiles[metahash] = meta
+}
+
+func (fs *FileStorage) WriteChunksToFile(chunks []utils.SHA256, file *os.File) {
+	fs.chunksLock.Lock()
+	defer fs.chunksLock.Unlock()
+	defer file.Close()
+	for _, h := range chunks {
+		data := fs.chunks[h]
+		file.Write(data.Data)
+	}
 }

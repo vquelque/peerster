@@ -1,6 +1,10 @@
 package message
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/vquelque/Peerster/utils"
+)
 
 // SimpleMessage represents a type of Peerster message containing only text.
 type SimpleMessage struct {
@@ -96,6 +100,20 @@ func NewDataReply(origin string, hoplimit uint32, request *DataRequest, data []b
 		Data:        data,
 	}
 	return d
+}
+
+// Set hop limit to 0 for default value (10)
+func NewDataRequest(origin string, destination string, hoplimit uint32, hashValue utils.SHA256) *DataRequest {
+	if hoplimit <= 0 {
+		hoplimit = 10 //default hoplimit
+	}
+	dr := &DataRequest{
+		Origin:      origin,
+		Destination: destination,
+		HopLimit:    hoplimit,
+		HashValue:   hashValue[:],
+	}
+	return dr
 }
 
 //Prints a RumorMessage

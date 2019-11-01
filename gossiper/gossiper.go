@@ -31,8 +31,9 @@ type Gossiper struct {
 	RumorStorage          *storage.RumorStorage //store all previously received rumors.
 	PrivateStorage        *storage.PrivateStorage
 	FileStorage           *storage.FileStorage
-	Active                *sync.WaitGroup    //Active go routines.
-	WaitingForAck         *observer.Observer //registered go routines channels waiting for an ACK.
+	Active                *sync.WaitGroup        //Active go routines.
+	WaitingForAck         *observer.Observer     //registered go routines channels waiting for an ACK.
+	WaitingForData        *observer.FileObserver //registered routines waiting for file data
 	AntiEntropyTimer      int
 	ResetAntiEntropyTimer chan bool
 	Routing               *routing.Routing
@@ -66,6 +67,7 @@ func NewGossiper(address string, name string, uiPort int, peersList string, simp
 	privateStorage := storage.NewPrivateStorage()
 	fileStorage := storage.NewFileStorage()
 	waitingForAck := observer.Init()
+	waitingForData := observer.InitFileObserver()
 	resetAntiEntropyChan := make(chan (bool))
 	routing := routing.NewRoutingTable()
 
@@ -80,6 +82,7 @@ func NewGossiper(address string, name string, uiPort int, peersList string, simp
 		PrivateStorage:        privateStorage,
 		FileStorage:           fileStorage,
 		WaitingForAck:         waitingForAck,
+		WaitingForData:        waitingForData,
 		Active:                &sync.WaitGroup{},
 		AntiEntropyTimer:      antiEntropyTimer,
 		ResetAntiEntropyTimer: resetAntiEntropyChan,
@@ -183,18 +186,18 @@ func (gsp *Gossiper) processMessages(peerMsgs <-chan *receivedPackets, clientMsg
 			case gp.Simple != nil:
 				// received a simple message
 				fmt.Println(gp.Simple.String())
-				gsp.processSimpleMessage(gp.Simple)
+				go gsp.processSimpleMessage(gp.Simple)
 			case gp.RumorMessage != nil:
 				// received a rumorMessage
-				gsp.processRumorMessage(gp.RumorMessage, peerMsg.sender)
+				go gsp.processRumorMessage(gp.RumorMessage, peerMsg.sender)
 			case gp.StatusPacket != nil:
-				gsp.processStatusPacket(gp.StatusPacket, peerMsg.sender)
+				go gsp.processStatusPacket(gp.StatusPacket, peerMsg.sender)
 			case gp.Private != nil:
-				gsp.processPrivateMessage(gp.Private)
+				go gsp.processPrivateMessage(gp.Private)
 			case gp.DataRequest != nil:
-				gsp.processDataRequest(gp.DataRequest)
+				go gsp.processDataRequest(gp.DataRequest)
 			case gp.DataReply != nil:
-				gsp.processDataReply(gp.DataReply)
+				go gsp.processDataReply(gp.DataReply)
 			default:
 				log.Print("Error : more than one message or 3 NIL in GossipPacket")
 			}

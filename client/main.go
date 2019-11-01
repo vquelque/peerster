@@ -31,10 +31,16 @@ func main() {
 
 	msg := message.Message{Text: *text}
 	if *destination != "" {
+		if *file != "" {
+			log.Fatal("ERROR (Bad argument combination)")
+		}
 		msg.Destination = *destination
 	}
 
 	if *file != "" {
+		if *text != "" {
+			log.Fatal("ERROR (Bad argument combination)")
+		}
 		utils.CopyFile(*file, gossiper.FileTempDirectory)
 		msg = message.Message{File: *file}
 	}
@@ -47,6 +53,6 @@ func main() {
 
 	_, err = udpConn.WriteToUDP(pkt, udpAddr)
 	if err == nil {
-		log.Print("Packet sent")
+		fmt.Printf("CLIENT MESSAGE sent to %s", udpAddr.String())
 	}
 }
