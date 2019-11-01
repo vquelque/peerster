@@ -39,4 +39,5 @@
 Peerster
 
 #Files
-_sharedFiles/*
+_SharedFiles/*
+_Downloads/*
