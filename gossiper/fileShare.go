@@ -14,8 +14,9 @@ import (
 )
 
 const ChunkSize = 8000 //in bytes
-const FileTempDirectory = "./_sharedFiles/"
-const FileOutDirectory = "./_sharedFiles/"
+const FileTempDirectory = "./_SharedFiles/"
+const FileOutDirectory = "./_Downloads/"
+const maxChunkDownloadTries = 10
 
 func (gsp *Gossiper) processFile(filename string) {
 	fileURI := FileTempDirectory + filename
@@ -112,11 +113,14 @@ func (gsp *Gossiper) startFileDownload(metahash utils.SHA256, peer string, filen
 
 func (gsp *Gossiper) downloadFromPeer(hash utils.SHA256, peer string) []byte {
 	var data []byte
-	for {
+	tries := 0
+	for tries < maxChunkDownloadTries {
+		tries++
 		callback := gsp.WaitingForData.RegisterFileObserver(hash)
 		dr := message.NewDataRequest(gsp.Name, peer, 0, hash)
 		gsp.forwardDataRequest(dr)
 		reply := <-callback
+		gsp.WaitingForData.UnregisterFileObserver(hash)
 		data := reply.Data
 		h := sha256.Sum256(data)
 		if bytes.Compare(h[:], reply.HashValue) == 0 {
@@ -153,7 +157,7 @@ func (gsp *Gossiper) processDataReply(r *message.DataReply) {
 		return
 	}
 	// this data reply is for us
-	//TODO CALLBACK TO CALLING ROUTINE
+	if gsp.WaitingForData.
 }
 
 func (gsp *Gossiper) forwardDataRequest(dr *message.DataRequest) {
