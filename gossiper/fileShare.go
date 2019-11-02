@@ -13,7 +13,7 @@ import (
 	"github.com/vquelque/Peerster/utils"
 )
 
-const ChunkSize = 8000 //in bytes
+const ChunkSize = 8192 //in bytes
 const FileTempDirectory = "./_SharedFiles/"
 const FileOutDirectory = "./_Downloads/"
 const maxChunkDownloadTries = 10
@@ -35,8 +35,6 @@ func (gsp *Gossiper) processFile(filename string) {
 	for {
 		//for each chunk of 8KB
 		bytesread, err := file.Read(buffer)
-		hash := sha256.Sum256(buffer[:bytesread])
-		metafile = append(metafile, hash[:]...)
 		if err != nil {
 			if err != io.EOF {
 				//error reading file
@@ -45,10 +43,13 @@ func (gsp *Gossiper) processFile(filename string) {
 				return
 			}
 			EOF = true
+			break
 		}
 		count++
+		hash := sha256.Sum256(buffer[:bytesread])
+		metafile = append(metafile, hash[:]...)
 		data := make([]byte, bytesread)
-		copy(data, buffer)
+		copy(data, buffer[:bytesread])
 		c := &storage.Chunk{Data: data, Hash: hash}
 		gsp.FileStorage.StoreChunk(c)
 		fmt.Printf("CHUNK %d STORED. HASH %x. \n", count, hash)
@@ -112,7 +113,7 @@ func (gsp *Gossiper) startFileDownload(metahash utils.SHA256, peer string, filen
 				file.Completed = false
 				return
 			}
-			chunk := &storage.Chunk{data, h}
+			chunk := &storage.Chunk{Data: data, Hash: h}
 			gsp.FileStorage.StoreChunk(chunk)
 			file.ChunkCount++
 		}
@@ -166,6 +167,7 @@ func (gsp *Gossiper) processDataRequest(dr *message.DataRequest) {
 	data := gsp.FileStorage.GetChunkOrMeta(hash)
 	if data != nil {
 		r := message.NewDataReply(gsp.Name, 0, dr, data)
+		fmt.Println(len(data))
 		gsp.forwardDataReply(r)
 	}
 }

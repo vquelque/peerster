@@ -7,7 +7,7 @@ import (
 	"github.com/vquelque/Peerster/utils"
 )
 
-const MaxBufferSize = 1024
+const MaxBufferSize = 65535
 
 // Socket is a generic interface representing a socket
 type Socket interface {
