@@ -1,6 +1,7 @@
 package observer
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/vquelque/Peerster/message"
@@ -88,4 +89,15 @@ func (obs *FileObserver) UnregisterFileObserver(caller utils.SHA256) {
 		close(ackChan)
 		delete(obs.waitingForData, caller)
 	}
+}
+
+func (obs *FileObserver) SendDataToObserver(caller utils.SHA256, chunk *message.DataReply) error {
+	obs.lock.RLock()
+	defer obs.lock.RUnlock()
+	ackChan, found := obs.waitingForData[caller]
+	if found && ackChan != nil {
+		ackChan <- chunk
+		return nil
+	}
+	return fmt.Errorf("No observer found for this reply")
 }

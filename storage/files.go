@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"sync"
@@ -62,10 +63,11 @@ func (fs *FileStorage) StoreChunk(c *Chunk) {
 func (fs *FileStorage) GetChunkOrMeta(hash utils.SHA256) []byte {
 	fs.chunksLock.RLock()
 	fs.filesLock.RLock()
-	defer fs.chunksLock.Unlock()
+	defer fs.chunksLock.RUnlock()
 	defer fs.filesLock.RUnlock()
 	meta, mfound := fs.metafiles[hash]
 	chunk, cfound := fs.chunks[hash]
+	fmt.Printf("GETTING CHUNK %x  FOUND %s ", hash, cfound)
 	if mfound {
 		return meta
 	} else if cfound {
@@ -99,7 +101,11 @@ func (fs *FileStorage) GetMetafile(hash utils.SHA256) Metafile {
 func (fs *FileStorage) StoreMetafile(metahash utils.SHA256, meta Metafile) {
 	fs.metafilesLock.Lock()
 	defer fs.metafilesLock.Unlock()
-	fs.metafiles[metahash] = meta
+	_, found := fs.metafiles[metahash]
+	if !found {
+		fs.metafiles[metahash] = make(Metafile, len(meta))
+		copy(fs.metafiles[metahash], meta)
+	}
 }
 
 func (fs *FileStorage) WriteChunksToFile(chunks []utils.SHA256, file *os.File) {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/vquelque/Peerster/message"
+	"github.com/vquelque/Peerster/utils"
 )
 
 // ProcessClientMessage processes client messages
@@ -14,12 +15,15 @@ func (gsp *Gossiper) ProcessClientMessage(msg *message.Message) {
 		//broadcast packet
 		gsp.broadcastPacket(gp, gsp.PeersSocket.Address())
 	} else {
-		if msg.Destination != "" {
+		if msg.Destination != "" && len(msg.Request) == 0 {
 			//private message
 			m := message.NewPrivateMessage(gsp.Name, msg.Text, msg.Destination, defaultHopLimit)
 			gsp.processPrivateMessage(m)
-		} else if msg.File != "" {
+		} else if msg.File != "" && len(msg.Request) == 0 {
 			go gsp.processFile(msg.File)
+		} else if len(msg.Request) != 0 && msg.Destination != "" {
+			h := utils.SliceToHash(msg.Request)
+			go gsp.startFileDownload(h, msg.Destination, msg.File)
 		} else {
 			//rumor message
 			mID := gsp.VectorClock.NextMessageForPeer(gsp.Name)

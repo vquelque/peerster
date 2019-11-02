@@ -1,15 +1,14 @@
 package main
 
 import (
+	"encoding/hex"
 	"flag"
 	"fmt"
 	"log"
 	"net"
 
 	"github.com/dedis/protobuf"
-	"github.com/vquelque/Peerster/gossiper"
 	"github.com/vquelque/Peerster/message"
-	"github.com/vquelque/Peerster/utils"
 )
 
 func main() {
@@ -18,6 +17,7 @@ func main() {
 	text := flag.String("msg", "", "message to be sent; if the -dest flag is present, this is a private message, otherwise it’s a rumor message")
 	destination := flag.String("dest", "", "destination for the private message. can be omitted")
 	file := flag.String("file", "", "file to be indexed by the gossiper")
+	request := flag.String("request", "", "request a chunk or metafile of this hash")
 
 	flag.Parse()
 
@@ -29,23 +29,28 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	msg := message.Message{Text: *text}
-	if *destination != "" {
-		if *file != "" {
-			log.Fatal("ERROR (Bad argument combination)")
+	msg := &message.Message{}
+	if *text != "" && *file == "" && *request == "" {
+		if *destination != "" {
+			msg.Destination = *destination
 		}
+		msg.Text = *text
+	} else if *file != "" && *request == "" {
+		// utils.CopyFile(*file, ".")
+		msg.File = *file
+	} else if *request != "" && *file != "" && *destination != "" {
+		data, err := hex.DecodeString(*request)
+		if err != nil {
+			log.Fatal("Unable to decode hex hash)")
+		}
+		msg.Request = data
 		msg.Destination = *destination
+		msg.File = *file
+	} else {
+		log.Fatal("ERROR (Bad argument combination)")
 	}
 
-	if *file != "" {
-		if *text != "" {
-			log.Fatal("ERROR (Bad argument combination)")
-		}
-		utils.CopyFile(*file, gossiper.FileTempDirectory)
-		msg = message.Message{File: *file}
-	}
-
-	pkt, err := protobuf.Encode(&msg)
+	pkt, err := protobuf.Encode(msg)
 
 	if err != nil {
 		log.Fatalln(err)

@@ -11,8 +11,10 @@ type Message struct {
 //Print client message
 func (msg *Message) String() string {
 	str := "CLIENT MESSAGE "
-	if msg.File != "" {
+	if msg.File != "" && msg.Request == nil {
 		str += "FILE SHARE " + msg.File
+	} else if msg.File != "" && msg.Request != nil {
+		str += "FILE REQUEST" + string(msg.Request)
 	} else {
 		str += msg.Text
 	}

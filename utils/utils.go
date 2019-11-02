@@ -52,3 +52,9 @@ func CopyFile(src, dst string) (int64, error) {
 	nBytes, err := io.Copy(destination, source)
 	return nBytes, err
 }
+
+func SliceToHash(hash []byte) SHA256 {
+	var h SHA256
+	copy(h[:], hash)
+	return h
+}

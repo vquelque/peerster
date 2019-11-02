@@ -31,6 +31,7 @@ func (gsp *Gossiper) processFile(filename string) {
 	metafile := make([]byte, 0)
 	var count uint32 = 0
 
+	EOF := false
 	for {
 		//for each chunk of 8KB
 		bytesread, err := file.Read(buffer)
@@ -43,94 +44,115 @@ func (gsp *Gossiper) processFile(filename string) {
 				//TODO clean all previously stored chunks
 				return
 			}
-			//EOF
-			break
+			EOF = true
 		}
 		count++
 		data := make([]byte, bytesread)
 		copy(data, buffer)
 		c := &storage.Chunk{Data: data, Hash: hash}
 		gsp.FileStorage.StoreChunk(c)
+		fmt.Printf("CHUNK %d STORED. HASH %x. \n", count, hash)
+		if EOF {
+			break
+		}
 	}
 	metaHash := sha256.Sum256(metafile)
 	f := &storage.File{Name: filename, MetafileHash: metaHash, ChunkCount: count}
 	gsp.FileStorage.StoreFile(f, metafile)
 	fmt.Printf("File stored in memory. Metahash : %x\n", metaHash)
+	fmt.Printf("METAFILE CONTENT : %x\n", gsp.FileStorage.GetMetafile(f.MetafileHash))
 }
 
 func (gsp *Gossiper) startFileDownload(metahash utils.SHA256, peer string, filename string) *storage.File {
-	var f *storage.File
 	file := gsp.FileStorage.GetFile(metahash)
+	fmt.Printf("STARTING FILE DOWNLOAD. Filename : %s. Peer : %s \n", filename, peer)
 	if file != nil && file.Completed {
 		// already have file
 		fmt.Print("File already downloaded")
-		f = file
-		return f
+		return file
 	}
 	if file == nil {
-		f = &storage.File{Name: filename, MetafileHash: metahash, ChunkCount: 0}
+		file = &storage.File{Name: filename, MetafileHash: metahash, ChunkCount: 0}
 	}
 	go func() {
 		//get or request metafile
 		meta := gsp.FileStorage.GetMetafile(metahash)
 		if meta == nil {
 			fmt.Printf("DOWNLOADING metafile of %s from %s\n", filename, peer)
-			meta = gsp.downloadFromPeer(metahash, peer)
+			meta, err := gsp.downloadFromPeer(metahash, peer)
+			if err != nil {
+				log.Printf("ERROR DOWNLOADING METAFILE FOR FILE %s FROM PEER %s", filename, peer)
+				return
+			}
 			gsp.FileStorage.StoreMetafile(metahash, meta)
 		}
+		meta = gsp.FileStorage.GetMetafile(metahash)
+		fmt.Printf("META %x \n", meta)
 		toDownload := len(meta) / sha256.Size //number of chunks to download
+		fmt.Printf("TO DOWN : %d \n", toDownload)
 
 		// create the slice of all hashes
 		var chunksHash []utils.SHA256
-		for i := 0; i < toDownload; i += sha256.Size {
-			j := i + sha256.Size - 1
+		for i := 0; i < toDownload; i++ {
+			j := i * sha256.Size
+			k := j + sha256.Size
 			var hash utils.SHA256
-			copy(hash[:], meta[i:j])
+			copy(hash[:], meta[j:k])
 			chunksHash = append(chunksHash, hash)
 		}
+		fmt.Printf("%x \n", chunksHash)
 		// download all the chunks
-		for f.ChunkCount < uint32(toDownload) {
-			h := chunksHash[f.ChunkCount]
-			fmt.Printf("DOWNLOADING %s chunk %d from %s \n", filename, f.ChunkCount+1, peer)
-			data := gsp.downloadFromPeer(h, peer)
+		for file.ChunkCount < uint32(toDownload) {
+			h := chunksHash[file.ChunkCount]
+			fmt.Printf("DOWNLOADING %s chunk %d from %s \n", filename, file.ChunkCount+1, peer)
+			data, err := gsp.downloadFromPeer(h, peer)
+			if err != nil {
+				//ABORTING
+				log.Print(err)
+				file.Completed = false
+				return
+			}
 			chunk := &storage.Chunk{data, h}
 			gsp.FileStorage.StoreChunk(chunk)
-			f.ChunkCount++
+			file.ChunkCount++
 		}
 
 		out, err := os.Create(FileOutDirectory + filename)
 		if err != nil {
-			fmt.Println("Impossible to create a new file", err)
+			fmt.Println("Impossible to create a new file \n", err)
 			return
 		}
 		//have all the chunks. Reconstructing the file
 		gsp.FileStorage.WriteChunksToFile(chunksHash, out)
 		file.Completed = true
-		fmt.Printf("RECONSTRUCTED file %s", filename)
+		fmt.Printf("RECONSTRUCTED file %s \n", filename)
 	}()
-	return f
+	return file
 }
 
-func (gsp *Gossiper) downloadFromPeer(hash utils.SHA256, peer string) []byte {
-	var data []byte
+func (gsp *Gossiper) downloadFromPeer(hash utils.SHA256, peer string) ([]byte, error) {
 	tries := 0
-	for tries < maxChunkDownloadTries {
+	for tries <= maxChunkDownloadTries {
 		tries++
 		callback := gsp.WaitingForData.RegisterFileObserver(hash)
+		// fmt.Printf("REGISTERING OBSERVER %x \n", hash)
 		dr := message.NewDataRequest(gsp.Name, peer, 0, hash)
 		gsp.forwardDataRequest(dr)
 		reply := <-callback
 		gsp.WaitingForData.UnregisterFileObserver(hash)
 		data := reply.Data
 		h := sha256.Sum256(data)
+		// fmt.Printf("RECEIVED PKT HASH : %x \n", h)
+		// fmt.Printf("RECEIVED PKT data : %x \n", data)
 		if bytes.Compare(h[:], reply.HashValue) == 0 {
-			//data is good
-			break
+			return data, nil
 		}
 	}
-	return data
+	err := fmt.Errorf("ERROR DOWNLOADING CHUNK %x FROM PEER %s : MAX RETRIES LIMIT REACHED. ABORTING", hash, peer)
+	return nil, err
 }
 func (gsp *Gossiper) processDataRequest(dr *message.DataRequest) {
+	fmt.Printf("RECEIVED DATA REQUEST FROM %s FOR hash %x \n", dr.Origin, dr.HashValue)
 	if dr.Destination != gsp.Name {
 		if dr.HopLimit == 0 {
 			return
@@ -157,7 +179,12 @@ func (gsp *Gossiper) processDataReply(r *message.DataReply) {
 		return
 	}
 	// this data reply is for us
-	if gsp.WaitingForData.
+	hash := utils.SliceToHash(r.HashValue)
+	// fmt.Printf("GETTING OBSERVER %x \n", hash)
+	err := gsp.WaitingForData.SendDataToObserver(hash, r)
+	if err != nil {
+		log.Print(err)
+	}
 }
 
 func (gsp *Gossiper) forwardDataRequest(dr *message.DataRequest) {
@@ -174,7 +201,7 @@ func (gsp *Gossiper) forwardDataReply(r *message.DataReply) {
 	gp := &GossipPacket{DataReply: r}
 	r.HopLimit--
 	nextHopAddr := gsp.Routing.GetRoute(r.Destination)
-	// println("sending dara reply to " + r.Destination + " via " + nextHopAddr)
+	fmt.Printf("SENDING DATA REPLY TO DEST %s VIA %s \n", r.Destination, nextHopAddr)
 	if nextHopAddr != "" {
 		gsp.send(gp, nextHopAddr)
 	}
