@@ -153,7 +153,7 @@ func (gsp *Gossiper) startRoutingMessageHandler() {
 func (gsp *Gossiper) sendRouteRumor(peer string) {
 	rID := gsp.VectorClock.NextMessageForPeer(gsp.Name)
 	r := message.NewRouteRumorMessage(gsp.Name, rID)
-	gsp.sendRumorMessage(r, peer)
+	gsp.processRumorMessage(r, "")
 }
 
 ////////////////////////////
