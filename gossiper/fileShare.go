@@ -16,7 +16,7 @@ import (
 
 const ChunkSize = 8192 //in bytes
 const FileTempDirectory = "./_SharedFiles/"
-const FileOutDirectory = "./_Downloads/"
+const FileOutDirectory = "./_SharedFiles/"
 const maxChunkDownloadTries = 10
 const timeout = 5 //in seconds
 
