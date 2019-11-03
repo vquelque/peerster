@@ -131,6 +131,11 @@ func (gsp *Gossiper) processSimpleMessage(msg *message.SimpleMessage) {
 func (gsp *Gossiper) startRoutingMessageHandler() {
 	rTimerDuration := time.Duration(gsp.Rtimer) * time.Second
 	timer := time.NewTicker(rTimerDuration)
+	defer timer.Stop()
+	//send initial routing message to all neighbors
+	for _, peer := range gsp.Peers.GetAllPeers() {
+		gsp.sendRouteRumor(peer)
+	}
 	go func() {
 		for {
 			select {
@@ -230,8 +235,5 @@ func (gsp *Gossiper) Start() {
 	}
 	if gsp.Rtimer > 0 {
 		gsp.startRoutingMessageHandler()
-		//send initial routing message
-		randPeer := gsp.Peers.PickRandomPeer("")
-		gsp.sendRouteRumor(randPeer)
 	}
 }

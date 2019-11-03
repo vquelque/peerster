@@ -58,6 +58,6 @@ func main() {
 
 	_, err = udpConn.WriteToUDP(pkt, udpAddr)
 	if err == nil {
-		fmt.Printf("CLIENT MESSAGE sent to %s", udpAddr.String())
+		fmt.Printf("CLIENT MESSAGE sent to %s \n", udpAddr.String())
 	}
 }

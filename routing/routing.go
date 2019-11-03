@@ -13,7 +13,7 @@ type Routing struct {
 	lock   sync.RWMutex
 }
 
-// RoutingTable returns a new routing table
+// RoutingTable returns a new routing table with routing for direct neighbors
 func NewRoutingTable() *Routing {
 	rt := &Routing{
 		routes: make(map[string]string),
