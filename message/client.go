@@ -1,5 +1,7 @@
 package message
 
+import "fmt"
+
 //Message corresponds to the message send from the UI client to gossiper
 type Message struct {
 	Text        string
@@ -14,7 +16,7 @@ func (msg *Message) String() string {
 	if msg.File != "" && msg.Request == nil {
 		str += "FILE SHARE " + msg.File
 	} else if msg.File != "" && msg.Request != nil {
-		str += "FILE REQUEST" + string(msg.Request)
+		str += fmt.Sprintf("FILE REQUEST METAHASH %x", msg.Request)
 	} else {
 		str += msg.Text
 	}
