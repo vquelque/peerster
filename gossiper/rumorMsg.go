@@ -18,7 +18,8 @@ func (gsp *Gossiper) processRumorMessage(msg *message.RumorMessage, sender strin
 		gsp.Peers.Add(sender)
 	}
 
-	if gsp.VectorClock.NextMessageForPeer(msg.Origin) == msg.ID {
+	next := gsp.VectorClock.NextMessageForPeer(msg.Origin)
+	if next == msg.ID {
 		// we were waiting for this message
 		// increase mID for peer and store message
 		gsp.VectorClock.IncrementMIDForPeer(msg.Origin)
@@ -30,9 +31,10 @@ func (gsp *Gossiper) processRumorMessage(msg *message.RumorMessage, sender strin
 		} else {
 			log.Print("No other peers to forward rumor message")
 		}
-		if sender != "" {
-			gsp.Routing.UpdateRoute(msg, sender) //update routing table
-		}
+	}
+
+	if sender != "" && msg.ID >= next {
+		gsp.Routing.UpdateRoute(msg, sender) //update routing table
 	}
 
 	// acknowledge the packet if not sent by client
