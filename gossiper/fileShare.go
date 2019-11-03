@@ -16,7 +16,7 @@ import (
 
 const ChunkSize = 8192 //in bytes
 const FileTempDirectory = "./_SharedFiles/"
-const FileOutDirectory = "./_SharedFiles/"
+const FileOutDirectory = "./_Downloads/"
 const maxChunkDownloadTries = 10
 const timeout = 5 //in seconds
 
@@ -52,7 +52,7 @@ func (gsp *Gossiper) processFile(filename string) {
 		copy(data, buffer[:bytesread])
 		c := &storage.Chunk{Data: data, Hash: hash}
 		gsp.FileStorage.StoreChunk(c)
-		fmt.Printf("CHUNK %d STORED. HASH %x. \n", count, hash)
+		// fmt.Printf("CHUNK %d STORED. HASH %x. \n", count, hash)
 	}
 	metaHash := sha256.Sum256(metafile)
 	f := &storage.File{Name: filename, MetafileHash: metaHash, ChunkCount: count}
