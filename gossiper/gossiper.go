@@ -106,9 +106,7 @@ func (gsp *Gossiper) send(gossipPacket *GossipPacket, addr string) {
 
 func (gsp *Gossiper) broadcastPacket(pkt *GossipPacket, sender string) {
 	for _, peer := range gsp.Peers.GetAllPeers() {
-		if peer != sender {
-			gsp.send(pkt, peer)
-		}
+		gsp.send(pkt, peer)
 	}
 }
 
@@ -117,7 +115,6 @@ func (gsp *Gossiper) broadcastPacket(pkt *GossipPacket, sender string) {
 ////////////////////////////
 func (gsp *Gossiper) newForwardedMessage(msg *message.SimpleMessage) *message.SimpleMessage {
 	msg = message.NewSimpleMessage(msg.Contents, msg.OriginalName, gsp.PeersSocket.Address())
-	msg.RelayPeerAddr = gsp.PeersSocket.Address()
 	return msg
 }
 
@@ -125,9 +122,7 @@ func (gsp *Gossiper) processSimpleMessage(msg *message.SimpleMessage) {
 	gsp.Peers.Add(msg.RelayPeerAddr)
 	fwdMsg := gsp.newForwardedMessage(msg)
 	packet := &GossipPacket{Simple: fwdMsg}
-	if gsp.Simple { //running in simple mode => broadcast
-		gsp.broadcastPacket(packet, msg.RelayPeerAddr)
-	}
+	gsp.broadcastPacket(packet, msg.RelayPeerAddr)
 }
 
 ////////////////////////////
@@ -207,7 +202,7 @@ func (gsp *Gossiper) processMessages(peerMsgs <-chan *receivedPackets, clientMsg
 			if err != nil {
 				log.Print(err)
 			}
-			gsp.ProcessClientMessage(msg)
+			go gsp.ProcessClientMessage(msg)
 		}
 		fmt.Println(gsp.Peers.PrintPeers())
 	}

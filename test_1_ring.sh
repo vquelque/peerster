@@ -72,45 +72,27 @@ do
 	msgLine2="SIMPLE MESSAGE origin B from 127.0.0.1:$relayPort contents $message2"
 	peersLine="127.0.0.1:$nextPort,127.0.0.1:$relayPort"
 	if [[ "$DEBUG" == "true" ]] ; then
-	    echo "outputFiles[$i]"
 		echo "check 1 $msgLine"
 		echo "check 2 $msgLine2"
 		echo "check 3 $peersLine"
 	fi
 	gossipPort=$(($gossipPort+1))
-	
-	failed="F"
 	if !(grep -q "$msgLine" "${outputFiles[$i]}") ; then
    		failed="T"
 	fi
-	if [[ "$failed" == "T" ]] ; then
-    echo -e "${RED}***FAILED***${NC}"
-	else
-	echo "***PASSED***"
-	fi
-
-	failed="F"
 	if !(grep -q "$peersLine" "${outputFiles[$i]}") ; then
         failed="T"
     fi
-	if [[ "$failed" == "T" ]] ; then
-    echo -e "${RED}***FAILED***${NC}"
-	else
-	echo "***PASSED***"
-	fi
-
-	failed="F"
 	if !(grep -q "$msgLine2" "${outputFiles[$i]}") ; then
         failed="T"
     fi
-	if [[ "$failed" == "T" ]] ; then
-    echo -e "${RED}***FAILED***${NC}"
-	else
-	echo "***PASSED***"
-	fi
 done
 
-
+if [[ "$failed" == "T" ]] ; then
+    echo -e "${RED}***FAILED***${NC}"
+else
+	echo "***PASSED***"
+fi
 
 
 
