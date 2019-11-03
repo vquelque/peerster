@@ -8,13 +8,14 @@ import (
 
 func (gsp *Gossiper) processPrivateMessage(msg *message.PrivateMessage) {
 	if msg.Destination != gsp.Name {
-		if msg.HopLimit == 0 {
+		if msg.HopLimit <= 0 {
 			return
 		}
 		gsp.sendPrivateMessage(msg)
 		return
 	}
 	// this private message is for us
+	msg.HopLimit--
 	gsp.PrivateStorage.Store(msg, msg.Origin)
 	fmt.Println(msg.String())
 }
@@ -22,7 +23,6 @@ func (gsp *Gossiper) processPrivateMessage(msg *message.PrivateMessage) {
 // sendPrivateMessage sends private Message to dest and decrements hop limit
 func (gsp *Gossiper) sendPrivateMessage(msg *message.PrivateMessage) {
 	gp := &GossipPacket{Private: msg}
-	msg.HopLimit--
 	nextHopAddr := gsp.Routing.GetRoute(msg.Destination)
 	// println("sending private message to " + msg.Destination + " via " + nextHopAddr)
 	if nextHopAddr != "" {
