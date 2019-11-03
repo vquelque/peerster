@@ -2,8 +2,7 @@ $(document).ready(function() {
   $.getJSON("/id", function(data) {
     $("#peerID").html(data);
   });
-  fetchMessages();
-  getPeers();
+  update();
 
   function getPeers() {
     $.getJSON("/peers", function(data) {
@@ -15,23 +14,27 @@ $(document).ready(function() {
     });
   }
 
-  $.getJSON("/contacts", function(data) {
-    $.each(data, function(key, val) {
-      req = "/private.html?peer=" + key;
-      $(".contactList").append(
-        "<li class='contactItem'>" +
-          "<a target='popup' rel='noopener noreferrer' href=" +
-          req +
-          ">" +
-          key +
-          "</a>" +
-          " (via " +
-          val +
-          ")" +
-          "</li>"
-      );
+  function getContacts() {
+    $.getJSON("/contacts", function(data) {
+      var items = [];
+      $.each(data, function(key, val) {
+        req = "/private.html?peer=" + key;
+        items.push(
+          "<li class='contactItem'>" +
+            "<a target='popup' rel='noopener noreferrer' href=" +
+            req +
+            ">" +
+            key +
+            "</a>" +
+            " (via " +
+            val +
+            ")" +
+            "</li>"
+        );
+      });
+      $(".contactList").html(items.join(""));
     });
-  });
+  }
 
   $("#chat").submit(function(event) {
     event.preventDefault(); //prevent default action
@@ -41,8 +44,7 @@ $(document).ready(function() {
       data: $(this).serialize()
     }).done(function(response) {
       $("#chat")[0].reset();
-      fetchMessages();
-      getPeers();
+      update();
     });
   });
 
@@ -66,5 +68,11 @@ $(document).ready(function() {
     });
   }
 
-  setInterval(fetchMessages, 1000); //fetch messages every seconds
+  function update() {
+    fetchMessages();
+    getContacts();
+    getPeers();
+  }
+
+  setInterval(update, 1000); //fetch messages every seconds
 });
