@@ -58,7 +58,7 @@ func (gsp *Gossiper) processFile(filename string) {
 	f := &storage.File{Name: filename, MetafileHash: metaHash, ChunkCount: count}
 	gsp.FileStorage.StoreFile(f, metafile)
 	fmt.Printf("File stored in memory. Metahash : %x\n", metaHash)
-	fmt.Printf("METAFILE CONTENT : %x\n", gsp.FileStorage.GetMetafile(f.MetafileHash))
+	// fmt.Printf("METAFILE CONTENT : %x\n", gsp.FileStorage.GetMetafile(f.MetafileHash))
 }
 
 func (gsp *Gossiper) startFileDownload(metahash utils.SHA256, peer string, filename string) {
