@@ -121,6 +121,9 @@ func (gsp *Gossiper) startFileDownload(metahash utils.SHA256, peer string, filen
 			file.ChunkCount++
 		}
 
+		if _, err := os.Stat(FileOutDirectory); os.IsNotExist(err) {
+			os.Mkdir(FileOutDirectory, os.ModePerm)
+		}
 		out, err := os.Create(FileOutDirectory + filename)
 		if err != nil {
 			fmt.Println("Impossible to create a new file \n", err)
@@ -169,18 +172,17 @@ func (gsp *Gossiper) downloadFromPeer(hash utils.SHA256, peer string) ([]byte, e
 }
 func (gsp *Gossiper) processDataRequest(dr *message.DataRequest) {
 	fmt.Printf("RECEIVED DATA REQUEST FROM %s FOR hash %x \n", dr.Origin, dr.HashValue)
-	if dr.Destination != gsp.Name {
-		if dr.HopLimit == 0 {
-			return
-		}
-		gsp.forwardDataRequest(dr)
+	if dr.Destination != gsp.Name && dr.HopLimit == 0 {
 		return
 	}
 	// this data request is for us
-	var hash utils.SHA256
-	copy(hash[:], dr.HashValue) //convert slice to hash array
+	hash := utils.SliceToHash(dr.HashValue)
 	data := gsp.FileStorage.GetChunkOrMeta(hash)
-	r := message.NewDataReply(gsp.Name, 0, dr, data)
+	if data == nil {
+		gsp.forwardDataRequest(dr)
+		return
+	}
+	r := message.NewDataReply(gsp.Name, defaultHopLimit, dr, data)
 	gsp.forwardDataReply(r)
 }
 
