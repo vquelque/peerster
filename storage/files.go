@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"sync"
@@ -67,7 +66,7 @@ func (fs *FileStorage) GetChunkOrMeta(hash utils.SHA256) []byte {
 	defer fs.filesLock.RUnlock()
 	meta, mfound := fs.metafiles[hash]
 	chunk, cfound := fs.chunks[hash]
-	fmt.Printf("GETTING CHUNK %x  FOUND %s ", hash, cfound)
+	//	log.Printf("GETTING CHUNK %x  FOUND %s ", hash, cfound)
 	if mfound {
 		return meta
 	} else if cfound {

@@ -61,13 +61,13 @@ func (gsp *Gossiper) processFile(filename string) {
 	fmt.Printf("METAFILE CONTENT : %x\n", gsp.FileStorage.GetMetafile(f.MetafileHash))
 }
 
-func (gsp *Gossiper) startFileDownload(metahash utils.SHA256, peer string, filename string) *storage.File {
+func (gsp *Gossiper) startFileDownload(metahash utils.SHA256, peer string, filename string) {
 	file := gsp.FileStorage.GetFile(metahash)
 	fmt.Printf("STARTING FILE DOWNLOAD. Filename : %s. Peer : %s \n", filename, peer)
 	if file != nil && file.Completed {
 		// already have file
-		fmt.Print("File already downloaded \n")
-		return file
+		fmt.Printf("File already downloaded \n")
+		return
 	}
 	if file == nil {
 		file = &storage.File{Name: filename, MetafileHash: metahash, ChunkCount: 0}
@@ -90,9 +90,8 @@ func (gsp *Gossiper) startFileDownload(metahash utils.SHA256, peer string, filen
 			gsp.FileStorage.StoreMetafile(metahash, meta)
 		}
 		meta = gsp.FileStorage.GetMetafile(metahash)
-		fmt.Printf("META %x \n", meta)
 		toDownload := len(meta) / sha256.Size //number of chunks to download
-		fmt.Printf("TO DOWN : %d \n", toDownload)
+		//	fmt.Printf("TO DOWN : %d \n", toDownload)
 
 		// create the slice of all hashes
 		var chunksHash []utils.SHA256
@@ -103,7 +102,6 @@ func (gsp *Gossiper) startFileDownload(metahash utils.SHA256, peer string, filen
 			copy(hash[:], meta[j:k])
 			chunksHash = append(chunksHash, hash)
 		}
-		fmt.Printf("%x \n", chunksHash)
 		// download all the chunks
 		for file.ChunkCount < uint32(toDownload) {
 			h := chunksHash[file.ChunkCount]
@@ -119,8 +117,8 @@ func (gsp *Gossiper) startFileDownload(metahash utils.SHA256, peer string, filen
 				}
 				chunk := &storage.Chunk{Data: data, Hash: h}
 				gsp.FileStorage.StoreChunk(chunk)
-				file.ChunkCount++
 			}
+			file.ChunkCount++
 		}
 
 		out, err := os.Create(FileOutDirectory + filename)
@@ -131,9 +129,9 @@ func (gsp *Gossiper) startFileDownload(metahash utils.SHA256, peer string, filen
 		//have all the chunks. Reconstructing the file
 		gsp.FileStorage.WriteChunksToFile(chunksHash, out)
 		file.Completed = true
+		gsp.FileStorage.StoreFile(file, meta)
 		fmt.Printf("RECONSTRUCTED file %s \n", filename)
 	}()
-	return file
 }
 
 func (gsp *Gossiper) downloadFromPeer(hash utils.SHA256, peer string) ([]byte, error) {
