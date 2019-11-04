@@ -19,6 +19,7 @@ func (gsp *Gossiper) sendStatusPacket(addr string) {
 func (gsp *Gossiper) processStatusPacket(sp *vector.StatusPacket, sender string) {
 	fmt.Print(sp.StringStatusWithSender(sender))
 	gsp.Peers.Add(sender)
+	fmt.Println(gsp.Peers.PrintPeers())
 	//reset anti entropy timer
 	gsp.ResetAntiEntropyTimer <- true
 
