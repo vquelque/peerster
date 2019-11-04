@@ -17,7 +17,7 @@ import (
 const ChunkSize = 8192 //in bytes
 const FileTempDirectory = "./_SharedFiles/"
 const FileOutDirectory = "./_Downloads/"
-const maxChunkDownloadTries = 50
+const maxChunkDownloadTries = 10
 const timeout = 5 //in seconds
 
 func (gsp *Gossiper) processFile(filename string) {
@@ -63,12 +63,12 @@ func (gsp *Gossiper) processFile(filename string) {
 
 func (gsp *Gossiper) startFileDownload(metahash utils.SHA256, peer string, filename string) {
 	file := gsp.FileStorage.GetFile(metahash)
-	fmt.Printf("STARTING FILE DOWNLOAD. Filename : %s. Peer : %s \n", filename, peer)
-	if file != nil && file.Completed {
-		// already have file
-		fmt.Printf("File already downloaded \n")
-		return
-	}
+	//fmt.Printf("STARTING FILE DOWNLOAD. Filename : %s. Peer : %s \n", filename, peer)
+	// if file != nil && file.Completed {
+	// 	// already have file
+	// 	fmt.Printf("File already downloaded \n")
+	// 	return
+	// }
 	if file == nil {
 		file = &storage.File{Name: filename, MetafileHash: metahash, ChunkCount: 0}
 	}
@@ -79,12 +79,12 @@ func (gsp *Gossiper) startFileDownload(metahash utils.SHA256, peer string, filen
 			fmt.Printf("DOWNLOADING metafile of %s from %s\n", filename, peer)
 			meta, err := gsp.downloadFromPeer(metahash, peer)
 			if err != nil {
-				log.Printf("ERROR DOWNLOADING METAFILE FOR FILE %s FROM PEER %s", filename, peer)
+				// log.Printf("ERROR DOWNLOADING METAFILE FOR FILE %s FROM PEER %s", filename, peer)
 				file.Completed = false
 				return
 			}
 			if meta == nil {
-				fmt.Printf("PEER DOES NOT HAVE THIS FILE. ABORTING.")
+				// fmt.Printf("PEER DOES NOT HAVE THIS FILE. ABORTING.")
 				return
 			}
 			gsp.FileStorage.StoreMetafile(metahash, meta)
@@ -145,13 +145,13 @@ func (gsp *Gossiper) downloadFromPeer(hash utils.SHA256, peer string) ([]byte, e
 	callback := gsp.WaitingForData.RegisterFileObserver(hash)
 	defer gsp.WaitingForData.UnregisterFileObserver(hash)
 	// fmt.Printf("REGISTERING OBSERVER %x \n", hash)
-	dr := message.NewDataRequest(gsp.Name, peer, 0, hash)
+	dr := message.NewDataRequest(gsp.Name, peer, defaultHopLimit, hash)
 	gsp.forwardDataRequest(dr)
 	for tries <= maxChunkDownloadTries {
 		select {
 		case <-timer.C:
 			//timeout restransmitting data request
-			fmt.Printf("TIMEOUT FOR CHUNK %x. Retrying %d more time. \n", hash, maxChunkDownloadTries-tries)
+			//	fmt.Printf("TIMEOUT FOR CHUNK %x. Retrying %d more time. \n", hash, maxChunkDownloadTries-tries)
 		case reply := <-callback:
 			data := reply.Data
 			if len(data) == 0 {
