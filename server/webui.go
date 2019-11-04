@@ -1,6 +1,8 @@
 package server
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -161,7 +163,7 @@ func fileUploadHandler(gsp *gossiper.Gossiper) http.HandlerFunc {
 
 //this function returns the filename of the saved file or an error if it occurs
 func fileUploadHelper(r *http.Request) (string, error) {
-	r.ParseMultipartForm(32 << 20)             //limit file size to 32 MB
+	r.ParseMultipartForm(5 << 20)              //limit file size to 5 MB
 	file, handler, err := r.FormFile("myFile") //retrieve the file from form data
 	if err != nil {
 		return "", err
@@ -175,6 +177,33 @@ func fileUploadHelper(r *http.Request) (string, error) {
 	defer f.Close()
 	io.Copy(f, file)
 	return handler.Filename, nil
+}
+
+func fileDownloadHandler(gsp *gossiper.Gossiper) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "POST":
+			if err := r.ParseForm(); err != nil {
+				http.Error(w, "Invalid Data", http.StatusBadRequest)
+				return
+			}
+			strMetahash := r.FormValue("metahash")
+			peer := r.FormValue("peer")
+			filename := r.FormValue("filename")
+			if len(strMetahash) != sha256.Size {
+				//bad metahash
+				return
+			}
+			metahash, err := hex.DecodeString(strMetahash)
+			if err != nil {
+				log.Print("Unable to parse hash")
+				return
+			}
+			cliMsg := &message.Message{File: filename, Destination: peer, Request: metahash}
+			gsp.ProcessClientMessage(cliMsg)
+			http.Redirect(w, r, r.Header.Get("/"), 302)
+		}
+	})
 }
 
 // StartUIServer starts the UI server
