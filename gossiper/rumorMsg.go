@@ -14,7 +14,6 @@ import (
 func (gsp *Gossiper) processRumorMessage(msg *message.RumorMessage, sender string) {
 	//if sender is nil then it is a client message
 	if sender != "" {
-		gsp.Peers.Add(sender)
 		if msg.Origin != gsp.Name {
 			fmt.Println(msg.PrintRumor(sender))
 			fmt.Println(gsp.Peers.PrintPeers())

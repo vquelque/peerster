@@ -119,7 +119,6 @@ func (gsp *Gossiper) newForwardedMessage(msg *message.SimpleMessage) *message.Si
 }
 
 func (gsp *Gossiper) processSimpleMessage(msg *message.SimpleMessage) {
-	gsp.Peers.Add(msg.RelayPeerAddr)
 	fwdMsg := gsp.newForwardedMessage(msg)
 	packet := &GossipPacket{Simple: fwdMsg}
 	gsp.broadcastPacket(packet, msg.RelayPeerAddr)
@@ -179,6 +178,9 @@ func (gsp *Gossiper) processMessages(peerMsgs <-chan *receivedPackets, clientMsg
 		case peerMsg := <-peerMsgs:
 			var gp *GossipPacket = &GossipPacket{}
 			err := protobuf.Decode(peerMsg.data, gp)
+			if peerMsg.sender != "" {
+				gsp.Peers.Add(peerMsg.sender)
+			}
 			if err != nil {
 				log.Print(err)
 			}
