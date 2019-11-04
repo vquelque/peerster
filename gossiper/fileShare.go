@@ -171,7 +171,7 @@ func (gsp *Gossiper) downloadFromPeer(hash utils.SHA256, peer string) ([]byte, e
 	return nil, err
 }
 func (gsp *Gossiper) processDataRequest(dr *message.DataRequest) {
-	fmt.Printf("RECEIVED DATA REQUEST FROM %s FOR hash %x \n", dr.Origin, dr.HashValue)
+	// fmt.Printf("RECEIVED DATA REQUEST FROM %s FOR hash %x \n", dr.Origin, dr.HashValue)
 	if dr.Destination != gsp.Name && dr.HopLimit == 0 {
 		return
 	}
@@ -217,7 +217,7 @@ func (gsp *Gossiper) forwardDataReply(r *message.DataReply) {
 	gp := &GossipPacket{DataReply: r}
 	r.HopLimit--
 	nextHopAddr := gsp.Routing.GetRoute(r.Destination)
-	fmt.Printf("SENDING DATA REPLY TO DEST %s VIA %s \n", r.Destination, nextHopAddr)
+	// fmt.Printf("SENDING DATA REPLY TO DEST %s VIA %s \n", r.Destination, nextHopAddr)
 	if nextHopAddr != "" {
 		gsp.send(gp, nextHopAddr)
 	}
