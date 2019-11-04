@@ -16,6 +16,7 @@ func (gsp *Gossiper) processRumorMessage(msg *message.RumorMessage, sender strin
 	if sender != "" {
 		if msg.Origin != gsp.Name {
 			fmt.Println(msg.PrintRumor(sender))
+			fmt.Println(gsp.Peers.PrintPeers())
 		}
 		gsp.Peers.Add(sender)
 	}

@@ -191,7 +191,6 @@ func (gsp *Gossiper) processMessages(peerMsgs <-chan *receivedPackets, clientMsg
 			case gp.RumorMessage != nil:
 				// received a rumorMessage
 				go gsp.processRumorMessage(gp.RumorMessage, peerMsg.sender)
-				fmt.Println(gsp.Peers.PrintPeers())
 			case gp.StatusPacket != nil:
 				go gsp.processStatusPacket(gp.StatusPacket, peerMsg.sender)
 			case gp.Private != nil:
