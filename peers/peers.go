@@ -52,6 +52,8 @@ func (peersSet *Peers) CheckPeerPresent(peer string) bool {
 }
 
 func (peersSet *Peers) PrintPeers() string {
+	peersSet.lock.RLock()
+	defer peersSet.lock.RUnlock()
 	var peersString string
 	index := 0
 	for _, peer := range peersSet.GetAllPeers() {

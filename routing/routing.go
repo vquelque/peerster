@@ -78,6 +78,8 @@ func (rt *Routing) String() string {
 
 // GetAllRoutes returns a new map with origins and corresponding route names
 func (rt *Routing) GetAllRoutes() map[string]string {
+	rt.lock.RLock()
+	defer rt.lock.RUnlock()
 	allRoutes := make(map[string]string)
 	for origin, route := range rt.routes {
 		allRoutes[origin] = route
