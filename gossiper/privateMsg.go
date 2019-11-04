@@ -25,7 +25,7 @@ func (gsp *Gossiper) sendPrivateMessage(msg *message.PrivateMessage) {
 	nextHopAddr := gsp.Routing.GetRoute(msg.Destination)
 	msg.HopLimit--
 	// println("sending private message to " + msg.Destination + " via " + nextHopAddr)
-	if nextHopAddr != "" {
+	if nextHopAddr != "" && msg.HopLimit > 0 {
 		if msg.Origin == gsp.Name {
 			// we are the origin of this message --> store it to retrieve it in conversation
 			gsp.PrivateStorage.Store(msg, msg.Destination)

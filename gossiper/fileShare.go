@@ -172,7 +172,7 @@ func (gsp *Gossiper) downloadFromPeer(hash utils.SHA256, peer string) ([]byte, e
 }
 func (gsp *Gossiper) processDataRequest(dr *message.DataRequest) {
 	// fmt.Printf("RECEIVED DATA REQUEST FROM %s FOR hash %x \n", dr.Origin, dr.HashValue)
-	if dr.Destination != gsp.Name && dr.HopLimit == 0 {
+	if dr.Destination != gsp.Name && dr.HopLimit <= 0 {
 		return
 	}
 	// this data request is for us
@@ -188,7 +188,7 @@ func (gsp *Gossiper) processDataRequest(dr *message.DataRequest) {
 
 func (gsp *Gossiper) processDataReply(r *message.DataReply) {
 	if r.Destination != gsp.Name {
-		if r.HopLimit == 0 {
+		if r.HopLimit <= 0 {
 			return
 		}
 		gsp.forwardDataReply(r)
@@ -208,7 +208,7 @@ func (gsp *Gossiper) forwardDataRequest(dr *message.DataRequest) {
 	dr.HopLimit--
 	nextHopAddr := gsp.Routing.GetRoute(dr.Destination)
 	// println("sending data request to " + dr.Destination + " via " + nextHopAddr)
-	if nextHopAddr != "" {
+	if nextHopAddr != "" && dr.HopLimit > 0 {
 		gsp.send(gp, nextHopAddr)
 	}
 }
@@ -218,7 +218,7 @@ func (gsp *Gossiper) forwardDataReply(r *message.DataReply) {
 	r.HopLimit--
 	nextHopAddr := gsp.Routing.GetRoute(r.Destination)
 	// fmt.Printf("SENDING DATA REPLY TO DEST %s VIA %s \n", r.Destination, nextHopAddr)
-	if nextHopAddr != "" {
+	if nextHopAddr != "" && r.HopLimit > 0 {
 		gsp.send(gp, nextHopAddr)
 	}
 }
