@@ -17,7 +17,7 @@ import (
 const ChunkSize = 8192 //in bytes
 const FileTempDirectory = "./_SharedFiles/"
 const FileOutDirectory = "./_Downloads/"
-const maxChunkDownloadTries = 10
+const maxChunkDownloadTries = 50
 const timeout = 5 //in seconds
 
 func (gsp *Gossiper) processFile(filename string) {
@@ -208,7 +208,7 @@ func (gsp *Gossiper) forwardDataRequest(dr *message.DataRequest) {
 	dr.HopLimit--
 	nextHopAddr := gsp.Routing.GetRoute(dr.Destination)
 	// println("sending data request to " + dr.Destination + " via " + nextHopAddr)
-	if nextHopAddr != "" && dr.HopLimit > 0 {
+	if nextHopAddr != "" {
 		gsp.send(gp, nextHopAddr)
 	}
 }
@@ -218,7 +218,7 @@ func (gsp *Gossiper) forwardDataReply(r *message.DataReply) {
 	r.HopLimit--
 	nextHopAddr := gsp.Routing.GetRoute(r.Destination)
 	// fmt.Printf("SENDING DATA REPLY TO DEST %s VIA %s \n", r.Destination, nextHopAddr)
-	if nextHopAddr != "" && r.HopLimit > 0 {
+	if nextHopAddr != "" {
 		gsp.send(gp, nextHopAddr)
 	}
 }
