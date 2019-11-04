@@ -186,10 +186,12 @@ func (gsp *Gossiper) processMessages(peerMsgs <-chan *receivedPackets, clientMsg
 			case gp.Simple != nil:
 				// received a simple message
 				fmt.Println(gp.Simple.String())
+				fmt.Println(gsp.Peers.PrintPeers())
 				go gsp.processSimpleMessage(gp.Simple)
 			case gp.RumorMessage != nil:
 				// received a rumorMessage
 				go gsp.processRumorMessage(gp.RumorMessage, peerMsg.sender)
+				fmt.Println(gsp.Peers.PrintPeers())
 			case gp.StatusPacket != nil:
 				go gsp.processStatusPacket(gp.StatusPacket, peerMsg.sender)
 			case gp.Private != nil:
@@ -209,7 +211,6 @@ func (gsp *Gossiper) processMessages(peerMsgs <-chan *receivedPackets, clientMsg
 			}
 			go gsp.ProcessClientMessage(msg)
 		}
-		fmt.Println(gsp.Peers.PrintPeers())
 	}
 }
 
