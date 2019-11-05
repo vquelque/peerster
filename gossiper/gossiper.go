@@ -28,7 +28,7 @@ type Gossiper struct {
 	RumorStorage          *storage.RumorStorage //store all previously received rumors.
 	PrivateStorage        *storage.PrivateStorage
 	FileStorage           *storage.FileStorage
-	Active                *sync.WaitGroup        //Active go routines.
+	Active                sync.WaitGroup         //Active go routines.
 	WaitingForAck         *observer.Observer     //registered go routines channels waiting for an ACK.
 	WaitingForData        *observer.FileObserver //registered routines waiting for file data
 	AntiEntropyTimer      int
@@ -80,7 +80,7 @@ func NewGossiper(address string, name string, uiPort int, peersList string, simp
 		FileStorage:           fileStorage,
 		WaitingForAck:         waitingForAck,
 		WaitingForData:        waitingForData,
-		Active:                &sync.WaitGroup{},
+		Active:                sync.WaitGroup{},
 		AntiEntropyTimer:      antiEntropyTimer,
 		ResetAntiEntropyTimer: resetAntiEntropyChan,
 		Routing:               routing,
@@ -191,9 +191,9 @@ func (gsp *Gossiper) processMessages(peerMsgs <-chan *receivedPackets, clientMsg
 				// received a rumorMessage
 				gsp.processRumorMessage(gp.RumorMessage, peerMsg.sender)
 			case gp.StatusPacket != nil:
-				gsp.processStatusPacket(gp.StatusPacket, peerMsg.sender)
+				go gsp.processStatusPacket(gp.StatusPacket, peerMsg.sender)
 			case gp.Private != nil:
-				gsp.processPrivateMessage(gp.Private)
+				go gsp.processPrivateMessage(gp.Private)
 			case gp.DataRequest != nil:
 				go gsp.processDataRequest(gp.DataRequest)
 			case gp.DataReply != nil:
