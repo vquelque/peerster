@@ -57,17 +57,17 @@ func (gsp *Gossiper) processFile(filename string) {
 }
 
 func (gsp *Gossiper) startFileDownload(metahash utils.SHA256, peer string, filename string) {
+	file := gsp.FileStorage.GetFile(metahash)
+	//fmt.Printf("STARTING FILE DOWNLOAD. Filename : %s. Peer : %s \n", filename, peer)
+	// if file != nil && file.Completed {
+	// 	// already have file
+	// 	fmt.Printf("File already downloaded \n")
+	// 	return
+	// }
+	if file == nil {
+		file = &storage.File{Name: filename, MetafileHash: metahash, ChunkCount: 0}
+	}
 	go func() {
-		file := gsp.FileStorage.GetFile(metahash)
-		//fmt.Printf("STARTING FILE DOWNLOAD. Filename : %s. Peer : %s \n", filename, peer)
-		// if file != nil && file.Completed {
-		// 	// already have file
-		// 	fmt.Printf("File already downloaded \n")
-		// 	return
-		// }
-		if file == nil {
-			file = &storage.File{Name: filename, MetafileHash: metahash, ChunkCount: 0}
-		}
 		//get or request metafile
 		meta := gsp.FileStorage.GetMetafile(metahash)
 		if meta == nil {
