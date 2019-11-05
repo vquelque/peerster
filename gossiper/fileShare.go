@@ -167,23 +167,36 @@ func (gsp *Gossiper) downloadFromPeer(hash utils.SHA256, peer string) ([]byte, e
 	return nil, err
 }
 func (gsp *Gossiper) processDataRequest(dr *message.DataRequest) {
-	// this data request is for us
-	hash := utils.SliceToHash(dr.HashValue)
-	data := gsp.FileStorage.GetChunkOrMeta(hash)
-	if data == nil {
-		data = make([]byte, 0)
+	// fmt.Printf("RECEIVED DATA REQUEST FROM %s FOR hash %x \n", dr.Origin, dr.HashValue)
+	if dr.Destination != gsp.Name {
+		if dr.HopLimit > 0 {
+			gsp.forwardDataRequest(dr)
+		}
+	} else {
+		// this data request is for us
+		hash := utils.SliceToHash(dr.HashValue)
+		data := gsp.FileStorage.GetChunkOrMeta(hash)
+		if data == nil {
+			data = make([]byte, 0)
+		}
+		r := message.NewDataReply(gsp.Name, constant.DefaultHopLimit, dr, data)
+		gsp.forwardDataReply(r)
 	}
-	r := message.NewDataReply(gsp.Name, constant.DefaultHopLimit, dr, data)
-	gsp.forwardDataReply(r)
 }
 
 func (gsp *Gossiper) processDataReply(r *message.DataReply) {
-	// this data reply is for us
-	hash := utils.SliceToHash(r.HashValue)
-	// fmt.Printf("GETTING OBSERVER %x \n", hash)
-	err := gsp.WaitingForData.SendDataToObserver(hash, r)
-	if err != nil {
-		// 	log.Print(err)
+	if r.Destination != gsp.Name {
+		if r.HopLimit > 0 {
+			gsp.forwardDataReply(r)
+		}
+	} else {
+		// this data reply is for us
+		hash := utils.SliceToHash(r.HashValue)
+		// fmt.Printf("GETTING OBSERVER %x \n", hash)
+		err := gsp.WaitingForData.SendDataToObserver(hash, r)
+		if err != nil {
+			// 	log.Print(err)
+		}
 	}
 }
 

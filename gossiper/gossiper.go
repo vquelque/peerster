@@ -195,25 +195,9 @@ func (gsp *Gossiper) processMessages(peerMsgs <-chan *receivedPackets, clientMsg
 			case gp.Private != nil:
 				gsp.processPrivateMessage(gp.Private)
 			case gp.DataRequest != nil:
-				dr := gp.DataRequest
-				// fmt.Printf("RECEIVED DATA REQUEST FROM %s FOR hash %x \n", dr.Origin, dr.HashValue)
-				if dr.Destination != gsp.Name {
-					if dr.HopLimit != 0 {
-						gsp.forwardDataRequest(dr)
-					}
-				} else {
-					go gsp.processDataRequest(dr)
-				}
+				go gsp.processDataRequest(gp.DataRequest)
 			case gp.DataReply != nil:
-				r := gp.DataReply
-				if r.Destination != gsp.Name {
-					if r.HopLimit != 0 {
-						gsp.forwardDataReply(r)
-					}
-				} else {
-					go gsp.processDataReply(gp.DataReply)
-				}
-
+				go gsp.processDataReply(gp.DataReply)
 			}
 		case cliMsg := <-clientMsgs:
 			msg := &message.Message{}
