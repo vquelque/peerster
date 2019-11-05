@@ -204,8 +204,8 @@ func (gsp *Gossiper) processDataReply(r *message.DataReply) {
 }
 
 func (gsp *Gossiper) forwardDataRequest(dr *message.DataRequest) {
-	gp := &GossipPacket{DataRequest: dr}
 	dr.HopLimit--
+	gp := &GossipPacket{DataRequest: dr}
 	nextHopAddr := gsp.Routing.GetRoute(dr.Destination)
 	// println("sending data request to " + dr.Destination + " via " + nextHopAddr)
 	if nextHopAddr != "" {
@@ -214,8 +214,8 @@ func (gsp *Gossiper) forwardDataRequest(dr *message.DataRequest) {
 }
 
 func (gsp *Gossiper) forwardDataReply(r *message.DataReply) {
-	gp := &GossipPacket{DataReply: r}
 	r.HopLimit--
+	gp := &GossipPacket{DataReply: r}
 	nextHopAddr := gsp.Routing.GetRoute(r.Destination)
 	// fmt.Printf("SENDING DATA REPLY TO DEST %s VIA %s \n", r.Destination, nextHopAddr)
 	if nextHopAddr != "" {
