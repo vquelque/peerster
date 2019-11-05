@@ -111,7 +111,7 @@ func (gsp *Gossiper) startFileDownload(metahash utils.SHA256, peer string, filen
 				data, err := gsp.downloadFromPeer(h, peer)
 				if err != nil {
 					//ABORTING
-					log.Print(err)
+					//log.Print(err)
 					file.Completed = false
 					return
 				}
@@ -121,12 +121,13 @@ func (gsp *Gossiper) startFileDownload(metahash utils.SHA256, peer string, filen
 			file.ChunkCount++
 		}
 
-		if _, err := os.Stat(FileOutDirectory); os.IsNotExist(err) {
-			os.Mkdir(FileOutDirectory, os.ModePerm)
-		}
+		// if _, err := os.Stat(FileOutDirectory); os.IsNotExist(err) {
+		// 	os.Mkdir(FileOutDirectory, os.ModePerm)
+		// }
+
 		out, err := os.Create(FileOutDirectory + filename)
 		if err != nil {
-			fmt.Println("Impossible to create a new file \n", err)
+			//	fmt.Println("Impossible to create a new file \n", err)
 			return
 		}
 		//have all the chunks. Reconstructing the file
@@ -202,7 +203,7 @@ func (gsp *Gossiper) processDataReply(r *message.DataReply) {
 	// fmt.Printf("GETTING OBSERVER %x \n", hash)
 	err := gsp.WaitingForData.SendDataToObserver(hash, r)
 	if err != nil {
-		log.Print(err)
+		// 	log.Print(err)
 	}
 }
 
