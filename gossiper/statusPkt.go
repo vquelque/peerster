@@ -43,7 +43,6 @@ func (gsp *Gossiper) processStatusPacket(sp *vector.StatusPacket, sender string)
 func (gsp *Gossiper) startAntiEntropyHandler() {
 	antiEntropyDuration := time.Duration(gsp.AntiEntropyTimer) * time.Second
 	timer := time.NewTicker(antiEntropyDuration)
-	defer timer.Stop()
 	go func() {
 		for {
 			select {

@@ -129,7 +129,6 @@ func (gsp *Gossiper) processSimpleMessage(msg *message.SimpleMessage) {
 func (gsp *Gossiper) startRoutingMessageHandler() {
 	rTimerDuration := time.Duration(gsp.Rtimer) * time.Second
 	timer := time.NewTicker(rTimerDuration)
-	defer timer.Stop()
 	//send initial routing message to all neighbors
 	for _, peer := range gsp.Peers.GetAllPeers() {
 		gsp.sendRouteRumor(peer)
@@ -139,6 +138,7 @@ func (gsp *Gossiper) startRoutingMessageHandler() {
 			select {
 			case <-timer.C:
 				// timer elapsed : send route rumor packet to randomly chosen peer
+				print("sending rtimer")
 				randPeer := gsp.Peers.PickRandomPeer("")
 				if randPeer != "" {
 					gsp.sendRouteRumor(randPeer)
