@@ -9,19 +9,14 @@ import (
 	"os"
 	"time"
 
+	"github.com/vquelque/Peerster/constant"
 	"github.com/vquelque/Peerster/message"
 	"github.com/vquelque/Peerster/storage"
 	"github.com/vquelque/Peerster/utils"
 )
 
-const ChunkSize = 8192 //in bytes
-const FileTempDirectory = "./_SharedFiles/"
-const FileOutDirectory = "./_Downloads/"
-const maxChunkDownloadTries = 10
-const timeout = 5 //in seconds
-
 func (gsp *Gossiper) processFile(filename string) {
-	fileURI := FileTempDirectory + filename
+	fileURI := constant.FileTempDirectory + filename
 	file, err := os.Open(fileURI)
 	if err != nil {
 		fmt.Println(err)
@@ -29,7 +24,7 @@ func (gsp *Gossiper) processFile(filename string) {
 	}
 	defer file.Close()
 
-	buffer := make([]byte, ChunkSize)
+	buffer := make([]byte, constant.ChunkSize)
 	metafile := make([]byte, 0)
 	var count uint32 = 0
 
@@ -125,7 +120,7 @@ func (gsp *Gossiper) startFileDownload(metahash utils.SHA256, peer string, filen
 		// 	os.Mkdir(FileOutDirectory, os.ModePerm)
 		// }
 
-		out, err := os.Create(FileOutDirectory + filename)
+		out, err := os.Create(constant.FileOutDirectory + filename)
 		if err != nil {
 			//	fmt.Println("Impossible to create a new file \n", err)
 			return
@@ -140,15 +135,15 @@ func (gsp *Gossiper) startFileDownload(metahash utils.SHA256, peer string, filen
 
 func (gsp *Gossiper) downloadFromPeer(hash utils.SHA256, peer string) ([]byte, error) {
 	tries := 1
-	timeoutTimer := time.Duration(timeout) * time.Second
+	timeoutTimer := time.Duration(constant.Timeout) * time.Second
 	timer := time.NewTicker(timeoutTimer)
 	defer timer.Stop()
 	callback := gsp.WaitingForData.RegisterFileObserver(hash)
 	defer gsp.WaitingForData.UnregisterFileObserver(hash)
 	// fmt.Printf("REGISTERING OBSERVER %x \n", hash)
-	dr := message.NewDataRequest(gsp.Name, peer, defaultHopLimit, hash)
+	dr := message.NewDataRequest(gsp.Name, peer, constant.DefaultHopLimit, hash)
 	gsp.forwardDataRequest(dr)
-	for tries <= maxChunkDownloadTries {
+	for tries <= constant.MaxChunkDownloadTries {
 		select {
 		case <-timer.C:
 			//timeout restransmitting data request
@@ -186,7 +181,7 @@ func (gsp *Gossiper) processDataRequest(dr *message.DataRequest) {
 	if data == nil {
 		data = make([]byte, 0)
 	}
-	r := message.NewDataReply(gsp.Name, defaultHopLimit, dr, data)
+	r := message.NewDataReply(gsp.Name, constant.DefaultHopLimit, dr, data)
 	gsp.forwardDataReply(r)
 }
 

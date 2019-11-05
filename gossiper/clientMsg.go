@@ -3,6 +3,7 @@ package gossiper
 import (
 	"fmt"
 
+	"github.com/vquelque/Peerster/constant"
 	"github.com/vquelque/Peerster/message"
 	"github.com/vquelque/Peerster/utils"
 )
@@ -17,7 +18,7 @@ func (gsp *Gossiper) ProcessClientMessage(msg *message.Message) {
 	} else {
 		if msg.Destination != "" && len(msg.Request) == 0 {
 			//private message
-			m := message.NewPrivateMessage(gsp.Name, msg.Text, msg.Destination, defaultHopLimit)
+			m := message.NewPrivateMessage(gsp.Name, msg.Text, msg.Destination, constant.DefaultHopLimit)
 			gsp.processPrivateMessage(m)
 		} else if msg.File != "" && len(msg.Request) == 0 {
 			go gsp.processFile(msg.File)

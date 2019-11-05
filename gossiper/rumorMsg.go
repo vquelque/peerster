@@ -2,10 +2,10 @@ package gossiper
 
 import (
 	"fmt"
-	"log"
 	"math/rand"
 	"time"
 
+	"github.com/vquelque/Peerster/constant"
 	"github.com/vquelque/Peerster/message"
 	"github.com/vquelque/Peerster/vector"
 )
@@ -16,11 +16,18 @@ func (gsp *Gossiper) processRumorMessage(msg *message.RumorMessage, sender strin
 	if sender != "" {
 		if msg.Origin != gsp.Name {
 			fmt.Println(msg.PrintRumor(sender))
-			fmt.Println(gsp.Peers.PrintPeers())
+			//			fmt.Println(gsp.Peers.PrintPeers())
 		}
 	}
 
 	next := gsp.VectorClock.NextMessageForPeer(msg.Origin)
+	if sender != "" && msg.ID >= next && msg.Origin != gsp.Name {
+		gsp.Routing.UpdateRoute(msg, sender) //update routing table
+		if msg.Text != "" {
+			fmt.Println(gsp.Routing.PrintUpdate(msg.Origin))
+		}
+	}
+
 	if next == msg.ID {
 		// we were waiting for this message
 		// increase mID for peer and store message
@@ -31,14 +38,7 @@ func (gsp *Gossiper) processRumorMessage(msg *message.RumorMessage, sender strin
 		if randPeer != "" {
 			gsp.rumormonger(msg, randPeer)
 		} else {
-			log.Print("No other peers to forward rumor message")
-		}
-	}
-
-	if sender != "" && msg.ID >= next && msg.Origin != gsp.Name {
-		gsp.Routing.UpdateRoute(msg, sender) //update routing table
-		if msg.Text != "" {
-			fmt.Println(gsp.Routing.PrintUpdate(msg.Origin))
+			//	log.Print("No other peers to forward rumor message")
 		}
 	}
 
@@ -60,7 +60,7 @@ func (gsp *Gossiper) listenForAck(rumor *message.RumorMessage, peerAddr string) 
 	// register this channel inside the map of channels waiting for an ack (observer).
 	id := peerAddr + rumor.Origin + string(rumor.ID)
 	channel := gsp.WaitingForAck.Register(id)
-	timer := time.NewTicker(ackTimeout * time.Second)
+	timer := time.NewTicker(constant.AckTimeout * time.Second)
 	defer func() {
 		timer.Stop()
 		gsp.WaitingForAck.Unregister(id)

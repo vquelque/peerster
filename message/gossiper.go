@@ -3,6 +3,7 @@ package message
 import (
 	"fmt"
 
+	"github.com/vquelque/Peerster/constant"
 	"github.com/vquelque/Peerster/utils"
 )
 
@@ -63,10 +64,10 @@ func NewRumorMessage(origin string, ID uint32, text string) *RumorMessage {
 }
 
 //NewPrivateMessage creates a new private message for peer dest (dest is peer identifier not address).
-// Set hop limit to 0 for default value (10)
+// Set hop limit to 0 for default value
 func NewPrivateMessage(origin string, text string, destination string, hoplimit uint32) *PrivateMessage {
-	if hoplimit <= 0 {
-		hoplimit = 10 //default hoplimit
+	if hoplimit == 0 {
+		hoplimit = constant.DefaultHopLimit //default hoplimit
 	}
 	return &PrivateMessage{
 		Origin:      origin,
@@ -90,7 +91,7 @@ func NewRouteRumorMessage(origin string, ID uint32) *RumorMessage {
 // Set hop limit to 0 for default value (10)
 func NewDataReply(origin string, hoplimit uint32, request *DataRequest, data []byte) *DataReply {
 	if hoplimit <= 0 {
-		hoplimit = 10 //default hoplimit
+		hoplimit = constant.DefaultHopLimit //default hoplimit
 	}
 	d := &DataReply{
 		Origin:      origin,

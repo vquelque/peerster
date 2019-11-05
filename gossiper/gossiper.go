@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dedis/protobuf"
+	"github.com/vquelque/Peerster/constant"
 	"github.com/vquelque/Peerster/message"
 	"github.com/vquelque/Peerster/observer"
 	"github.com/vquelque/Peerster/peers"
@@ -15,10 +16,6 @@ import (
 	"github.com/vquelque/Peerster/storage"
 	"github.com/vquelque/Peerster/vector"
 )
-
-const channelSize = 10
-const defaultHopLimit = 10 //for private messages routing (in Hops)
-const ackTimeout = 10      //in seconds
 
 // Gossiper main structure
 type Gossiper struct {
@@ -160,7 +157,7 @@ func (gsp *Gossiper) sendRouteRumor(peer string) {
 ////////////////////////////
 // Handles the incoming packets.
 func handleIncomingPackets(socket socket.Socket) <-chan *receivedPackets {
-	out := make(chan *receivedPackets, channelSize)
+	out := make(chan *receivedPackets, constant.ChannelSize)
 	go func() {
 		for {
 			data, sender := socket.Receive()
@@ -201,8 +198,6 @@ func (gsp *Gossiper) processMessages(peerMsgs <-chan *receivedPackets, clientMsg
 				go gsp.processDataRequest(gp.DataRequest)
 			case gp.DataReply != nil:
 				go gsp.processDataReply(gp.DataReply)
-			default:
-				log.Print("Error : more than one message or 3 NIL in GossipPacket")
 			}
 		case cliMsg := <-clientMsgs:
 			msg := &message.Message{}

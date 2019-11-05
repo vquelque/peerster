@@ -23,47 +23,39 @@ type Chunk struct {
 }
 
 type FileStorage struct {
-	files         map[utils.SHA256]*File //metahash -> File
-	filesLock     *sync.RWMutex
-	chunks        map[utils.SHA256]*Chunk //chunk hash -> chunk
-	chunksLock    *sync.RWMutex
-	metafiles     map[utils.SHA256]Metafile //metafile hash -> metafile
-	metafilesLock *sync.RWMutex
+	files     map[utils.SHA256]*File    //metahash -> File
+	chunks    map[utils.SHA256]*Chunk   //chunk hash -> chunk
+	metafiles map[utils.SHA256]Metafile //metafile hash -> metafile
+	lock      *sync.RWMutex
 }
 
 func NewFileStorage() *FileStorage {
 	return &FileStorage{
-		files:         make(map[utils.SHA256]*File),
-		filesLock:     &sync.RWMutex{},
-		chunks:        make(map[utils.SHA256]*Chunk),
-		chunksLock:    &sync.RWMutex{},
-		metafiles:     make(map[utils.SHA256]Metafile),
-		metafilesLock: &sync.RWMutex{},
+		files:     make(map[utils.SHA256]*File),
+		chunks:    make(map[utils.SHA256]*Chunk),
+		metafiles: make(map[utils.SHA256]Metafile),
+		lock:      &sync.RWMutex{},
 	}
 }
 
 //StoreFile stores file and associated metafile
 func (fs *FileStorage) StoreFile(f *File, metafile []byte) {
-	fs.filesLock.Lock()
-	fs.metafilesLock.Lock()
-	defer fs.filesLock.Unlock()
-	defer fs.metafilesLock.Unlock()
+	fs.lock.Lock()
+	defer fs.lock.Unlock()
 	fs.files[f.MetafileHash] = f
 	fs.metafiles[f.MetafileHash] = metafile
 }
 
 // StoreChunk stores chunnk
 func (fs *FileStorage) StoreChunk(c *Chunk) {
-	fs.chunksLock.Lock()
-	defer fs.chunksLock.Unlock()
+	fs.lock.Lock()
+	defer fs.lock.Unlock()
 	fs.chunks[c.Hash] = c
 }
 
 func (fs *FileStorage) GetChunkOrMeta(hash utils.SHA256) []byte {
-	fs.chunksLock.RLock()
-	fs.filesLock.RLock()
-	defer fs.chunksLock.RUnlock()
-	defer fs.filesLock.RUnlock()
+	fs.lock.RLock()
+	defer fs.lock.RUnlock()
 	meta, mfound := fs.metafiles[hash]
 	chunk, cfound := fs.chunks[hash]
 	//	log.Printf("GETTING CHUNK %x  FOUND %s ", hash, cfound)
@@ -78,8 +70,8 @@ func (fs *FileStorage) GetChunkOrMeta(hash utils.SHA256) []byte {
 }
 
 func (fs *FileStorage) GetFile(hash utils.SHA256) *File {
-	fs.filesLock.RLock()
-	defer fs.filesLock.RUnlock()
+	fs.lock.RLock()
+	defer fs.lock.RUnlock()
 	f, found := fs.files[hash]
 	if !found {
 		return nil
@@ -88,8 +80,8 @@ func (fs *FileStorage) GetFile(hash utils.SHA256) *File {
 }
 
 func (fs *FileStorage) GetMetafile(hash utils.SHA256) Metafile {
-	fs.metafilesLock.RLock()
-	defer fs.metafilesLock.RUnlock()
+	fs.lock.RLock()
+	defer fs.lock.RUnlock()
 	f, found := fs.metafiles[hash]
 	if !found {
 		return nil
@@ -98,8 +90,8 @@ func (fs *FileStorage) GetMetafile(hash utils.SHA256) Metafile {
 }
 
 func (fs *FileStorage) StoreMetafile(metahash utils.SHA256, meta Metafile) {
-	fs.metafilesLock.Lock()
-	defer fs.metafilesLock.Unlock()
+	fs.lock.Lock()
+	defer fs.lock.Unlock()
 	_, found := fs.metafiles[metahash]
 	if !found {
 		fs.metafiles[metahash] = make(Metafile, len(meta))
@@ -108,8 +100,8 @@ func (fs *FileStorage) StoreMetafile(metahash utils.SHA256, meta Metafile) {
 }
 
 func (fs *FileStorage) WriteChunksToFile(chunks []utils.SHA256, file *os.File) {
-	fs.chunksLock.Lock()
-	defer fs.chunksLock.Unlock()
+	fs.lock.Lock()
+	defer fs.lock.Unlock()
 	defer file.Close()
 	for _, h := range chunks {
 		data := fs.chunks[h]
