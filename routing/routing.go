@@ -39,21 +39,21 @@ func (rt *Routing) DeleteRoute(origin string) {
 }
 
 func (rt *Routing) PrintUpdate(origin string) string {
-	rt.lock.Lock()
-	defer rt.lock.Unlock()
+	rt.lock.RLock()
+	defer rt.lock.RUnlock()
 	return fmt.Sprintf("DSDV %s %s", origin, rt.routes[origin])
 }
 
 func (rt *Routing) Contains(origin string) bool {
-	rt.lock.Lock()
-	defer rt.lock.Unlock()
+	rt.lock.RLock()
+	defer rt.lock.RUnlock()
 	_, ok := rt.routes[origin]
 	return ok
 }
 
 func (rt *Routing) GetRoute(origin string) string {
-	rt.lock.Lock()
-	defer rt.lock.Unlock()
+	rt.lock.RLock()
+	defer rt.lock.RUnlock()
 	return rt.routes[origin]
 }
 
@@ -66,8 +66,8 @@ func (rt *Routing) UpdateRoute(msg *message.RumorMessage, sender string) {
 }
 
 func (rt *Routing) String() string {
-	rt.lock.Lock()
-	defer rt.lock.Unlock()
+	rt.lock.RLock()
+	defer rt.lock.RUnlock()
 	str := "Routing table :"
 	for origin, route := range rt.routes {
 		str += "\n"
@@ -78,8 +78,8 @@ func (rt *Routing) String() string {
 
 // GetAllRoutes returns a new map with origins and corresponding route names
 func (rt *Routing) GetAllRoutes() map[string]string {
-	rt.lock.Lock()
-	defer rt.lock.Unlock()
+	rt.lock.RLock()
+	defer rt.lock.RUnlock()
 	allRoutes := make(map[string]string)
 	for origin, route := range rt.routes {
 		allRoutes[origin] = route
