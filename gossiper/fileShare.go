@@ -167,14 +167,6 @@ func (gsp *Gossiper) downloadFromPeer(hash utils.SHA256, peer string) ([]byte, e
 	return nil, err
 }
 func (gsp *Gossiper) processDataRequest(dr *message.DataRequest) {
-	// fmt.Printf("RECEIVED DATA REQUEST FROM %s FOR hash %x \n", dr.Origin, dr.HashValue)
-	if dr.Destination != gsp.Name {
-		if dr.HopLimit == 0 {
-			return
-		}
-		gsp.forwardDataRequest(dr)
-		return
-	}
 	// this data request is for us
 	hash := utils.SliceToHash(dr.HashValue)
 	data := gsp.FileStorage.GetChunkOrMeta(hash)
@@ -186,14 +178,6 @@ func (gsp *Gossiper) processDataRequest(dr *message.DataRequest) {
 }
 
 func (gsp *Gossiper) processDataReply(r *message.DataReply) {
-	if r.Destination != gsp.Name {
-		if r.HopLimit == 0 {
-			return
-		}
-		gsp.forwardDataReply(r)
-		return
-	}
-
 	// this data reply is for us
 	hash := utils.SliceToHash(r.HashValue)
 	// fmt.Printf("GETTING OBSERVER %x \n", hash)
