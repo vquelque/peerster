@@ -193,17 +193,17 @@ func (gsp *Gossiper) processMessages(peerMsgs <-chan *receivedPackets, clientMsg
 			case gp.StatusPacket != nil:
 				gsp.processStatusPacket(gp.StatusPacket, peerMsg.sender)
 			case gp.Private != nil:
-				gsp.processPrivateMessage(gp.Private)
+				go gsp.processPrivateMessage(gp.Private)
 			case gp.DataRequest != nil:
 				go gsp.processDataRequest(gp.DataRequest)
 			case gp.DataReply != nil:
-				gsp.processDataReply(gp.DataReply)
+				go gsp.processDataReply(gp.DataReply)
 			}
 		case cliMsg := <-clientMsgs:
 			msg := &message.Message{}
 			err := protobuf.Decode(cliMsg.data, msg)
 			if err != nil {
-				log.Print(err)
+				//	log.Print(err)
 			}
 			go gsp.ProcessClientMessage(msg)
 		}
