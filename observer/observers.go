@@ -12,7 +12,7 @@ import (
 // Observer structure used for callback to routine
 type Observer struct {
 	waitingForAck map[string]chan ACK
-	lock          *sync.RWMutex
+	lock          sync.RWMutex
 }
 
 // ACK used for sending result of comaprison with current vector clock to ack listener
@@ -23,7 +23,7 @@ type ACK struct {
 
 type FileObserver struct {
 	waitingForData map[utils.SHA256]chan *message.DataReply
-	lock           *sync.RWMutex
+	lock           sync.RWMutex
 }
 
 // SendACKToChannel wrap the ack and the result of the comparison with the currrent vector clock
@@ -34,8 +34,7 @@ func SendACKToChannel(channel chan ACK, sp *vector.StatusPacket, same bool) {
 }
 
 func Init() *Observer {
-	lock := &sync.RWMutex{}
-	obs := &Observer{make(map[string]chan ACK), lock}
+	obs := &Observer{make(map[string]chan ACK), sync.RWMutex{}}
 	return obs
 }
 
@@ -68,8 +67,7 @@ func (obs *Observer) GetObserver(peer string) chan ACK {
 }
 
 func InitFileObserver() *FileObserver {
-	lock := &sync.RWMutex{}
-	obs := &FileObserver{make(map[utils.SHA256]chan *message.DataReply), lock}
+	obs := &FileObserver{make(map[utils.SHA256]chan *message.DataReply), sync.RWMutex{}}
 	return obs
 }
 

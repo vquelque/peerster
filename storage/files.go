@@ -26,7 +26,7 @@ type FileStorage struct {
 	files     map[utils.SHA256]*File    //metahash -> File
 	chunks    map[utils.SHA256]*Chunk   //chunk hash -> chunk
 	metafiles map[utils.SHA256]Metafile //metafile hash -> metafile
-	lock      *sync.RWMutex
+	lock      sync.RWMutex
 }
 
 func NewFileStorage() *FileStorage {
@@ -34,7 +34,7 @@ func NewFileStorage() *FileStorage {
 		files:     make(map[utils.SHA256]*File),
 		chunks:    make(map[utils.SHA256]*Chunk),
 		metafiles: make(map[utils.SHA256]Metafile),
-		lock:      &sync.RWMutex{},
+		lock:      sync.RWMutex{},
 	}
 }
 
