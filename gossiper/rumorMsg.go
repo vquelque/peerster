@@ -52,7 +52,7 @@ func (gsp *Gossiper) processRumorMessage(msg *message.RumorMessage, sender strin
 func (gsp *Gossiper) rumormonger(rumor *message.RumorMessage, peerAddr string) {
 	go gsp.listenForAck(rumor, peerAddr)
 	gsp.sendRumorMessage(rumor, peerAddr)
-	fmt.Printf("MONGERING with %s \n", peerAddr)
+	//fmt.Printf("MONGERING with %s \n", peerAddr)
 }
 
 // Listen and handle ack or timeout.
@@ -95,7 +95,7 @@ func (gsp *Gossiper) coinFlip(rumor *message.RumorMessage, sender string) {
 		// exclude the sender of the rumor from the set where we pick our random peer to prevent a loop.
 		peer := gsp.Peers.PickRandomPeer(sender)
 		if peer != "" {
-			fmt.Printf("FLIPPED COIN sending rumor to %s\n", peer)
+			//	fmt.Printf("FLIPPED COIN sending rumor to %s\n", peer)
 			gsp.rumormonger(rumor, peer)
 		}
 	}
@@ -104,7 +104,7 @@ func (gsp *Gossiper) coinFlip(rumor *message.RumorMessage, sender string) {
 // Check if we are in sync with peer. Else, send the missing messages to the peer.
 func (gsp *Gossiper) synchronizeWithPeer(same bool, toAsk []vector.PeerStatus, toSend []vector.PeerStatus, peerAddr string) {
 	if same {
-		fmt.Printf("IN SYNC WITH %s \n", peerAddr)
+		//	fmt.Printf("IN SYNC WITH %s \n", peerAddr)
 		return
 	}
 	if len(toSend) > 0 {
