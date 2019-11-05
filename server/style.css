@@ -56,6 +56,15 @@ a:hover {
   margin-top: 15px;
 }
 
+#fileDownloadWrapper {
+  margin: 0 auto;
+  padding-bottom: 25px;
+  background: #ebf4fb;
+  width: 500px;
+  border: 1px solid #acd8f0;
+  margin-top: 15px;
+}
+
 #peerWrapper {
   margin: 0 auto;
   background: rgb(218, 250, 222);

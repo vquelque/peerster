@@ -16,10 +16,11 @@ $(document).ready(function() {
 
   function getContacts() {
     $.getJSON("/contacts", function(data) {
-      var items = [];
+      var contacts = [];
+      var pNames = [];
       $.each(data, function(key, val) {
         req = "/private.html?peer=" + key;
-        items.push(
+        contacts.push(
           "<li class='contactItem'>" +
             "<a target='popup' rel='noopener noreferrer' href=" +
             req +
@@ -31,8 +32,10 @@ $(document).ready(function() {
             ")" +
             "</li>"
         );
+        pNames.push("<option value='" + key + "'>" + key + "</option>");
       });
-      $(".contactList").html(items.join(""));
+      $(".contactList").html(contacts.join(""));
+      $(".fileRequestPeer").html(pNames.join(""));
     });
   }
 

@@ -190,13 +190,10 @@ func fileDownloadHandler(gsp *gossiper.Gossiper) http.HandlerFunc {
 			strMetahash := r.FormValue("metahash")
 			peer := r.FormValue("peer")
 			filename := r.FormValue("filename")
-			if len(strMetahash) != sha256.Size {
-				//bad metahash
-				return
-			}
 			metahash, err := hex.DecodeString(strMetahash)
-			if err != nil {
+			if err != nil || len(metahash) != sha256.Size {
 				log.Print("Unable to parse hash")
+				http.Redirect(w, r, r.Header.Get("/"), 302)
 				return
 			}
 			cliMsg := &message.Message{File: filename, Destination: peer, Request: metahash}

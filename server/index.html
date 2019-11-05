@@ -74,6 +74,19 @@
               <button type="submit">Add/Remove</button>
             </form>
           </div>
+
+          <div id="fileDownloadWrapper">
+            <h2>Dowload a file :</h2>
+            <form
+            action="/downloadFile"
+            method="post"
+          >
+            <input type="text" placeholder="metahash" name="metahash" />
+            <input type="text" placeholder="filename" name="filename" />
+            <select name="peer" class="fileRequestPeer"> </select>
+            <input type="submit" value="Request file" />
+          </form>
+        </div>
         </div>
       </div>
     </div>
