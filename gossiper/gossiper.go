@@ -2,7 +2,6 @@ package gossiper
 
 import (
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
@@ -96,7 +95,7 @@ func NewGossiper(address string, name string, uiPort int, peersList string, simp
 func (gsp *Gossiper) send(gossipPacket *GossipPacket, addr string) {
 	pkt, err := protobuf.Encode(gossipPacket)
 	if err != nil {
-		log.Print(err)
+		//log.Print(err)
 	}
 	gsp.PeersSocket.Send(pkt, addr)
 }
@@ -150,7 +149,7 @@ func (gsp *Gossiper) startRoutingMessageHandler() {
 func (gsp *Gossiper) sendRouteRumor(peer string) {
 	rID := gsp.VectorClock.NextMessageForPeer(gsp.Name)
 	r := message.NewRouteRumorMessage(gsp.Name, rID)
-	go gsp.processRumorMessage(r, "")
+	gsp.processRumorMessage(r, "")
 }
 
 ////////////////////////////
@@ -185,14 +184,14 @@ func (gsp *Gossiper) processMessages(peerMsgs <-chan *receivedPackets, clientMsg
 			switch {
 			case gp.Simple != nil:
 				// received a simple message
-				go gsp.processSimpleMessage(gp.Simple)
+				gsp.processSimpleMessage(gp.Simple)
 			case gp.RumorMessage != nil:
 				// received a rumorMessage
-				go gsp.processRumorMessage(gp.RumorMessage, peerMsg.sender)
+				gsp.processRumorMessage(gp.RumorMessage, peerMsg.sender)
 			case gp.StatusPacket != nil:
-				go gsp.processStatusPacket(gp.StatusPacket, peerMsg.sender)
+				gsp.processStatusPacket(gp.StatusPacket, peerMsg.sender)
 			case gp.Private != nil:
-				go gsp.processPrivateMessage(gp.Private)
+				gsp.processPrivateMessage(gp.Private)
 			case gp.DataRequest != nil:
 				go gsp.processDataRequest(gp.DataRequest)
 			case gp.DataReply != nil:
