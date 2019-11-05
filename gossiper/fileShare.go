@@ -193,13 +193,15 @@ func (gsp *Gossiper) processDataReply(r *message.DataReply) {
 		gsp.forwardDataReply(r)
 		return
 	}
-	// this data reply is for us
-	hash := utils.SliceToHash(r.HashValue)
-	// fmt.Printf("GETTING OBSERVER %x \n", hash)
-	err := gsp.WaitingForData.SendDataToObserver(hash, r)
-	if err != nil {
-		// 	log.Print(err)
-	}
+	go func() {
+		// this data reply is for us
+		hash := utils.SliceToHash(r.HashValue)
+		// fmt.Printf("GETTING OBSERVER %x \n", hash)
+		err := gsp.WaitingForData.SendDataToObserver(hash, r)
+		if err != nil {
+			// 	log.Print(err)
+		}
+	}()
 }
 
 func (gsp *Gossiper) forwardDataRequest(dr *message.DataRequest) {

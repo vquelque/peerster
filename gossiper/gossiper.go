@@ -197,7 +197,7 @@ func (gsp *Gossiper) processMessages(peerMsgs <-chan *receivedPackets, clientMsg
 			case gp.DataRequest != nil:
 				go gsp.processDataRequest(gp.DataRequest)
 			case gp.DataReply != nil:
-				go gsp.processDataReply(gp.DataReply)
+				gsp.processDataReply(gp.DataReply)
 			}
 		case cliMsg := <-clientMsgs:
 			msg := &message.Message{}
