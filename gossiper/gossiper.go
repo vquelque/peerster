@@ -138,7 +138,6 @@ func (gsp *Gossiper) startRoutingMessageHandler() {
 			select {
 			case <-timer.C:
 				// timer elapsed : send route rumor packet to randomly chosen peer
-				print("sending rtimer")
 				randPeer := gsp.Peers.PickRandomPeer("")
 				if randPeer != "" {
 					gsp.sendRouteRumor(randPeer)
@@ -151,7 +150,7 @@ func (gsp *Gossiper) startRoutingMessageHandler() {
 func (gsp *Gossiper) sendRouteRumor(peer string) {
 	rID := gsp.VectorClock.NextMessageForPeer(gsp.Name)
 	r := message.NewRouteRumorMessage(gsp.Name, rID)
-	gsp.processRumorMessage(r, "")
+	go gsp.processRumorMessage(r, "")
 }
 
 ////////////////////////////
@@ -181,12 +180,12 @@ func (gsp *Gossiper) processMessages(peerMsgs <-chan *receivedPackets, clientMsg
 				gsp.Peers.Add(peerMsg.sender)
 			}
 			if err != nil {
-				log.Print(err)
+				// log.Print(err)
 			}
 			switch {
 			case gp.Simple != nil:
 				// received a simple message
-				gsp.processSimpleMessage(gp.Simple)
+				go gsp.processSimpleMessage(gp.Simple)
 			case gp.RumorMessage != nil:
 				// received a rumorMessage
 				go gsp.processRumorMessage(gp.RumorMessage, peerMsg.sender)
