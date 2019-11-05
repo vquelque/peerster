@@ -218,6 +218,7 @@ func StartUIServer(UIPort int, gsp *gossiper.Gossiper) *http.Server {
 	mux.HandleFunc("/contacts", contactsHandler(gsp))
 	mux.HandleFunc("/privateMsg", privateMsgHandler(gsp))
 	mux.HandleFunc("/uploadFile", fileUploadHandler(gsp))
+	mux.HandleFunc("/downloadFile", fileDownloadHandler(gsp))
 	server := &http.Server{Addr: UIPortStr, Handler: mux}
 	go func() {
 		if err := server.ListenAndServe(); err != nil {
