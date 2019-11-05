@@ -116,6 +116,8 @@ func (gsp *Gossiper) newForwardedMessage(msg *message.SimpleMessage) *message.Si
 }
 
 func (gsp *Gossiper) processSimpleMessage(msg *message.SimpleMessage) {
+	fmt.Println(msg.String())
+	fmt.Println(gsp.Peers.PrintPeers())
 	fwdMsg := gsp.newForwardedMessage(msg)
 	packet := &GossipPacket{Simple: fwdMsg}
 	gsp.broadcastPacket(packet, msg.RelayPeerAddr)
@@ -184,14 +186,12 @@ func (gsp *Gossiper) processMessages(peerMsgs <-chan *receivedPackets, clientMsg
 			switch {
 			case gp.Simple != nil:
 				// received a simple message
-				fmt.Println(gp.Simple.String())
-				fmt.Println(gsp.Peers.PrintPeers())
 				gsp.processSimpleMessage(gp.Simple)
 			case gp.RumorMessage != nil:
 				// received a rumorMessage
-				gsp.processRumorMessage(gp.RumorMessage, peerMsg.sender)
+				go gsp.processRumorMessage(gp.RumorMessage, peerMsg.sender)
 			case gp.StatusPacket != nil:
-				gsp.processStatusPacket(gp.StatusPacket, peerMsg.sender)
+				go gsp.processStatusPacket(gp.StatusPacket, peerMsg.sender)
 			case gp.Private != nil:
 				go gsp.processPrivateMessage(gp.Private)
 			case gp.DataRequest != nil:
