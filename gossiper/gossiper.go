@@ -181,7 +181,7 @@ func (gsp *Gossiper) processMessages(peerMsgs <-chan *receivedPackets, clientMsg
 				gsp.Peers.Add(peerMsg.sender)
 			}
 			if err != nil {
-				log.Print(err)
+				//	log.Print(err)
 			}
 			switch {
 			case gp.Simple != nil:
