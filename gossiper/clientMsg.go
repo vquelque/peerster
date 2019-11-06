@@ -19,7 +19,7 @@ func (gsp *Gossiper) ProcessClientMessage(msg *message.Message) {
 		if msg.Destination != "" && len(msg.Request) == 0 {
 			//private message
 			m := message.NewPrivateMessage(gsp.Name, msg.Text, msg.Destination, constant.DefaultHopLimit)
-			gsp.processPrivateMessage(m)
+			go gsp.processPrivateMessage(m)
 		} else if msg.File != "" && len(msg.Request) == 0 {
 			go gsp.processFile(msg.File)
 		} else if len(msg.Request) != 0 && msg.Destination != "" {
@@ -29,7 +29,7 @@ func (gsp *Gossiper) ProcessClientMessage(msg *message.Message) {
 			//rumor message
 			mID := gsp.VectorClock.NextMessageForPeer(gsp.Name)
 			m := message.NewRumorMessage(gsp.Name, mID, msg.Text)
-			gsp.processRumorMessage(m, "")
+			go gsp.processRumorMessage(m, "")
 		}
 	}
 }
