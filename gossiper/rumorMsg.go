@@ -111,7 +111,9 @@ func (gsp *Gossiper) synchronizeWithPeer(same bool, toAsk []vector.PeerStatus, t
 		// we have new messages to send to the peer : start mongering
 		//get the rumor we need to send from storage
 		rumorMsg := gsp.RumorStorage.Get(toSend[0].Identifier, toSend[0].NextID)
-		gsp.rumormonger(rumorMsg, peerAddr)
+		if rumorMsg != nil {
+			gsp.rumormonger(rumorMsg, peerAddr)
+		}
 	} else if len(toAsk) > 0 {
 		// send status for triggering peer mongering
 		gsp.sendStatusPacket(peerAddr)
