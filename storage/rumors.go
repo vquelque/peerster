@@ -44,7 +44,7 @@ func (storage *RumorStorage) Get(peer string, ID uint32) *message.RumorMessage {
 	storage.lock.RLock()
 	defer storage.lock.RUnlock()
 	archive, found := storage.rumors[peer]
-	if !found || ID > uint32(len(archive)+1) {
+	if !found || ID > uint32(len(archive)+1) || ID < 1 {
 		return nil
 	}
 	return archive[ID-1]
