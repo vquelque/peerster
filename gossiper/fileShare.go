@@ -16,6 +16,9 @@ import (
 )
 
 func (gsp *Gossiper) processFile(filename string) {
+	if filename == "" {
+		return
+	}
 	fileURI := constant.FileTempDirectory + filename
 	file, err := os.Open(fileURI)
 	if err != nil {

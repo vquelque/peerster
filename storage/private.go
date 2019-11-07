@@ -7,13 +7,13 @@ import (
 )
 
 type PrivateStorage struct {
-	messages map[string][]message.PrivateMessage
+	messages map[string][]*message.PrivateMessage
 	lock     sync.RWMutex
 }
 
 func NewPrivateStorage() *PrivateStorage {
 	st := &PrivateStorage{
-		messages: make(map[string][]message.PrivateMessage),
+		messages: make(map[string][]*message.PrivateMessage),
 		lock:     sync.RWMutex{},
 	}
 	return st
@@ -24,7 +24,7 @@ func (storage *PrivateStorage) Store(message *message.PrivateMessage, peer strin
 	storage.lock.Lock()
 	defer storage.lock.Unlock()
 	archive := storage.messages[peer]
-	archive = append(archive, *message)
+	archive = append(archive, message)
 	storage.messages[peer] = archive
 }
 
@@ -37,7 +37,7 @@ func (storage *PrivateStorage) Get(peer string) *message.PrivateMessage {
 		// we don't have private messages for this peer
 		return nil
 	}
-	return &archive[len(archive)-1]
+	return archive[len(archive)-1]
 }
 
 // GetAllForPeer returns all the private messages for a peer
@@ -47,7 +47,10 @@ func (storage *PrivateStorage) GetAllForPeer(peer string) []message.PrivateMessa
 	archive, found := storage.messages[peer]
 	m := make([]message.PrivateMessage, len(archive))
 	if found {
-		copy(m, archive)
+		for _, msg := range archive {
+			m = append(m, *msg)
+		}
+
 	}
 	return m
 }
