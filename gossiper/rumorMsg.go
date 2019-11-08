@@ -16,7 +16,7 @@ func (gsp *Gossiper) processRumorMessage(msg *message.RumorMessage, sender strin
 	if sender != "" {
 		if msg.Origin != gsp.Name {
 			fmt.Println(msg.PrintRumor(sender))
-			//			fmt.Println(gsp.Peers.PrintPeers())
+			fmt.Println(gsp.Peers.PrintPeers())
 		}
 	}
 
@@ -71,13 +71,14 @@ func (gsp *Gossiper) listenForAck(rumor *message.RumorMessage, peerAddr string) 
 		select {
 		case <-timer.C:
 			gsp.coinFlip(rumor, peerAddr)
-			return
+			break
 		case ack := <-channel:
-			if ack.Same {
+			if ack {
 				gsp.coinFlip(rumor, peerAddr)
 			}
-			return
+			break
 		}
+		break
 	}
 }
 
@@ -104,7 +105,7 @@ func (gsp *Gossiper) coinFlip(rumor *message.RumorMessage, sender string) {
 // Check if we are in sync with peer. Else, send the missing messages to the peer.
 func (gsp *Gossiper) synchronizeWithPeer(same bool, toAsk []vector.PeerStatus, toSend []vector.PeerStatus, peerAddr string) {
 	if same {
-		//	fmt.Printf("IN SYNC WITH %s \n", peerAddr)
+		fmt.Printf("IN SYNC WITH %s \n", peerAddr)
 		return
 	}
 	if len(toSend) > 0 {

@@ -31,7 +31,7 @@ func (gsp *Gossiper) processStatusPacket(sp *vector.StatusPacket, sender string)
 		// Forward the result of the comparison to the routine to potentially
 		// trigger the coin toss.
 		// log.Print("OBSERVER FOUND")
-		observer.SendACKToChannel(observerChan, sp, same)
+		observer.SendACKToChannel(observerChan, same)
 	}
 	// if no registered channel, it is an anti-entropy status packet.
 	// in both cases synchronize with the peer

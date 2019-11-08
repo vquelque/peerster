@@ -25,15 +25,14 @@ type Vector struct {
 
 // NewVector returns a new empty vector clocl
 func NewVector() *Vector {
-	vec := &Vector{}
-	vec.nextMessage = make(map[string]uint32)
+	vec := &Vector{nextMessage: make(map[string]uint32), peersLock: sync.RWMutex{}}
 	return vec
 }
 
 // NextMessageForPeer returns next message id for given peer name.
 func (vec *Vector) NextMessageForPeer(peer string) uint32 {
-	vec.peersLock.RLock()
-	defer vec.peersLock.RUnlock()
+	vec.peersLock.Lock()
+	defer vec.peersLock.Unlock()
 	_, found := vec.nextMessage[peer]
 	if !found {
 		vec.nextMessage[peer] = 1

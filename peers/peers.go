@@ -13,7 +13,7 @@ type Peers struct {
 }
 
 func NewPeersSet(peersStr string) *Peers {
-	peersSet := &Peers{peers: make(map[string]bool)}
+	peersSet := &Peers{peers: make(map[string]bool), lock: sync.RWMutex{}}
 	peersSet.lock.Lock()
 	defer peersSet.lock.Unlock()
 	peers := strings.Split(peersStr, ",")
@@ -52,8 +52,6 @@ func (peersSet *Peers) CheckPeerPresent(peer string) bool {
 }
 
 func (peersSet *Peers) PrintPeers() string {
-	peersSet.lock.RLock()
-	defer peersSet.lock.RUnlock()
 	var peersString string
 	index := 0
 	for _, peer := range peersSet.GetAllPeers() {
@@ -84,7 +82,7 @@ func (peersSet *Peers) PickRandomPeer(sender string) string {
 			p2 := slice[i2]
 			return p2
 		}
-		return p1 //no other peers known
+		return "" //no other peers known
 	}
 	return p1
 }

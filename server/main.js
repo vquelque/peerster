@@ -77,5 +77,5 @@ $(document).ready(function() {
     getPeers();
   }
 
-  setInterval(update, 1000); //fetch messages every seconds
+  setInterval(update, 10000); //fetch messages every 10 seconds
 });

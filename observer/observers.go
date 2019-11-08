@@ -6,19 +6,12 @@ import (
 
 	"github.com/vquelque/Peerster/message"
 	"github.com/vquelque/Peerster/utils"
-	"github.com/vquelque/Peerster/vector"
 )
 
 // Observer structure used for callback to routine
 type Observer struct {
-	waitingForAck map[string]chan ACK
+	waitingForAck map[string]chan bool
 	lock          sync.RWMutex
-}
-
-// ACK used for sending result of comaprison with current vector clock to ack listener
-type ACK struct {
-	StatusPacket vector.StatusPacket
-	Same         bool
 }
 
 type FileObserver struct {
@@ -28,20 +21,19 @@ type FileObserver struct {
 
 // SendACKToChannel wrap the ack and the result of the comparison with the currrent vector clock
 // and send them to the channel
-func SendACKToChannel(channel chan ACK, sp *vector.StatusPacket, same bool) {
-	toChannel := ACK{StatusPacket: *sp, Same: same}
-	channel <- toChannel
+func SendACKToChannel(channel chan bool, same bool) {
+	channel <- same
 }
 
 func Init() *Observer {
-	obs := &Observer{make(map[string]chan ACK), sync.RWMutex{}}
+	obs := &Observer{make(map[string]chan bool), sync.RWMutex{}}
 	return obs
 }
 
-func (obs *Observer) Register(sender string) chan ACK {
+func (obs *Observer) Register(sender string) chan bool {
 	obs.lock.Lock()
 	defer obs.lock.Unlock()
-	ackChan := make(chan ACK)
+	ackChan := make(chan bool)
 	obs.waitingForAck[sender] = ackChan
 	return ackChan
 }
@@ -56,7 +48,7 @@ func (obs *Observer) Unregister(sender string) {
 	}
 }
 
-func (obs *Observer) GetObserver(peer string) chan ACK {
+func (obs *Observer) GetObserver(peer string) chan bool {
 	obs.lock.Lock()
 	defer obs.lock.Unlock()
 	ackChan, found := obs.waitingForAck[peer]
