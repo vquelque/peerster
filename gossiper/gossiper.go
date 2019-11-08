@@ -225,7 +225,7 @@ func (gsp *Gossiper) Start() {
 	peerChan := handleIncomingPackets(gsp.PeersSocket)
 	clientChan := handleIncomingPackets(gsp.UISocket)
 	go gsp.processMessages(peerChan, clientChan)
-	if !gsp.Simple {
+	if !gsp.Simple && gsp.AntiEntropyTimer > 0 {
 		gsp.startAntiEntropyHandler()
 	}
 	if gsp.Rtimer > 0 {

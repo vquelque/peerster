@@ -6,6 +6,7 @@ import (
 
 	"github.com/vquelque/Peerster/message"
 	"github.com/vquelque/Peerster/utils"
+	"github.com/vquelque/Peerster/vector"
 )
 
 // Observer structure used for callback to routine
@@ -17,12 +18,6 @@ type Observer struct {
 type FileObserver struct {
 	waitingForData map[utils.SHA256]chan *message.DataReply
 	lock           sync.RWMutex
-}
-
-// SendACKToChannel wrap the ack and the result of the comparison with the currrent vector clock
-// and send them to the channel
-func SendACKToChannel(channel chan bool, same bool) {
-	channel <- same
 }
 
 func Init() *Observer {
@@ -48,12 +43,15 @@ func (obs *Observer) Unregister(sender string) {
 	}
 }
 
-func (obs *Observer) GetObserver(peer string) chan bool {
-	obs.lock.Lock()
-	defer obs.lock.Unlock()
-	ackChan, found := obs.waitingForAck[peer]
-	if found {
-		return ackChan
+func (obs *Observer) GetObserver(sp *vector.StatusPacket, peer string) chan bool {
+	obs.lock.RLock()
+	defer obs.lock.RUnlock()
+	for _, ps := range sp.Want {
+		id := peer + fmt.Sprintf("%s : %d", ps.Identifier, ps.NextID-1)
+		ackChan, found := obs.waitingForAck[id]
+		if found {
+			return ackChan
+		}
 	}
 	return nil
 }

@@ -58,7 +58,7 @@ func (gsp *Gossiper) rumormonger(rumor *message.RumorMessage, peerAddr string) {
 // Listen and handle ack or timeout.
 func (gsp *Gossiper) listenForAck(rumor *message.RumorMessage, peerAddr string) {
 	// register this channel inside the map of channels waiting for an ack (observer).
-	id := peerAddr + rumor.Origin + string(rumor.ID)
+	id := peerAddr + fmt.Sprintf("%s : %d", rumor.Origin, rumor.ID)
 	channel := gsp.WaitingForAck.Register(id)
 	timer := time.NewTicker(constant.AckTimeout * time.Second)
 	defer func() {
@@ -71,14 +71,15 @@ func (gsp *Gossiper) listenForAck(rumor *message.RumorMessage, peerAddr string) 
 		select {
 		case <-timer.C:
 			gsp.coinFlip(rumor, peerAddr)
-			break
+			//	fmt.Printf("TIMEOUT \n")
+			return
 		case ack := <-channel:
 			if ack {
 				gsp.coinFlip(rumor, peerAddr)
 			}
-			break
+			//	fmt.Printf("GOT ACK \n")
+			return
 		}
-		break
 	}
 }
 
@@ -96,7 +97,7 @@ func (gsp *Gossiper) coinFlip(rumor *message.RumorMessage, sender string) {
 		// exclude the sender of the rumor from the set where we pick our random peer to prevent a loop.
 		peer := gsp.Peers.PickRandomPeer(sender)
 		if peer != "" {
-			//	fmt.Printf("FLIPPED COIN sending rumor to %s\n", peer)
+			fmt.Printf("FLIPPED COIN sending rumor to %s\n", peer)
 			gsp.rumormonger(rumor, peer)
 		}
 	}
@@ -117,6 +118,7 @@ func (gsp *Gossiper) synchronizeWithPeer(same bool, toAsk []vector.PeerStatus, t
 		}
 	} else if len(toAsk) > 0 {
 		// send status for triggering peer mongering
+		fmt.Println(toAsk)
 		gsp.sendStatusPacket(peerAddr)
 	}
 }
