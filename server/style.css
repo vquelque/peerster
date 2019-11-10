@@ -1,5 +1,5 @@
 h1 {
-  color: red;
+  color: black;
 }
 /* CSS Document */
 body {
@@ -21,7 +21,7 @@ input {
 }
 
 a {
-  color: #0000ff;
+  color: #f8c727;
   text-decoration: none;
 }
 
@@ -42,49 +42,43 @@ a:hover {
 #chatWrapper {
   margin: 0 auto;
   padding-bottom: 25px;
-  background: #ebf4fb;
   width: 500px;
-  border: 1px solid #acd8f0;
+  border: 1px solid black;
 }
 
 #fileUploadWrapper {
   margin: 0 auto;
   padding-bottom: 25px;
-  background: #ebf4fb;
   width: 500px;
-  border: 1px solid #acd8f0;
+  border: 1px solid black;
   margin-top: 15px;
 }
 
 #fileDownloadWrapper {
   margin: 0 auto;
   padding-bottom: 25px;
-  background: #ebf4fb;
   width: 500px;
-  border: 1px solid #acd8f0;
+  border: 1px solid black;
   margin-top: 15px;
 }
 
 #peerWrapper {
   margin: 0 auto;
-  background: rgb(218, 250, 222);
   width: 500px;
-  border: 1px solid rgb(238, 241, 50);
+  border: 1px solid black;
 }
 
 #managePeerWrapper {
   margin: 0 auto;
   padding-bottom: 25px;
-  background: rgb(170, 238, 255);
   width: 500px;
-  border: 1px solid rgb(253, 138, 118);
+  border: 1px solid black;
 }
 
 #contactsWrapper {
   margin: 0 auto;
-  background: rgba(236, 152, 232, 0.945);
   width: 500px;
-  border: 1px solid rgb(255, 6, 222);
+  border: 1px solid black;
 }
 
 #loginform {
@@ -100,10 +94,9 @@ a:hover {
   margin: 0 auto;
   margin-bottom: 25px;
   padding: 10px;
-  background: #fff;
   height: 360px;
   width: 430px;
-  border: 1px solid #acd8f0;
+  border: 1px solid black;
   overflow: auto;
   display: flex;
   flex-direction: column-reverse;
@@ -172,10 +165,9 @@ a:hover {
   margin: 0 auto;
   margin-bottom: 25px;
   padding: 10px;
-  background: rgb(226, 228, 226);
   height: 70px;
   width: 430px;
-  border: 1px solid #acd8f0;
+  border: 1px solid black;
   overflow: auto;
 }
 
@@ -188,9 +180,8 @@ a:hover {
   margin: 0 auto;
   margin-bottom: 25px;
   padding: 10px;
-  background: rgb(226, 228, 226);
   height: 70px;
   width: 430px;
-  border: 1px solid #acd8f0;
+  border: 1px solid black;
   overflow: auto;
 }

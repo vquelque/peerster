@@ -34,6 +34,7 @@ type Gossiper struct {
 	ResetAntiEntropyTimer chan bool
 	Routing               *routing.Routing
 	Rtimer                int
+	UIStorage             *storage.UIStorage
 }
 
 // GossipPacket is the only type of packet sent to other peers.
@@ -66,6 +67,7 @@ func NewGossiper(address string, name string, uiPort int, peersList string, simp
 	waitingForData := observer.InitFileObserver()
 	resetAntiEntropyChan := make(chan (bool))
 	routing := routing.NewRoutingTable()
+	uiStorage := storage.NewUIStorage()
 
 	return &Gossiper{
 		Name:                  name,
@@ -84,6 +86,7 @@ func NewGossiper(address string, name string, uiPort int, peersList string, simp
 		ResetAntiEntropyTimer: resetAntiEntropyChan,
 		Routing:               routing,
 		Rtimer:                rtimer,
+		UIStorage:             uiStorage,
 	}
 }
 

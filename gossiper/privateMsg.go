@@ -16,6 +16,7 @@ func (gsp *Gossiper) processPrivateMessage(msg *message.PrivateMessage) {
 	}
 	// this private message is for us
 	gsp.PrivateStorage.Store(msg, msg.Origin)
+	gsp.UIStorage.StorePrivateMsgAsync(msg, msg.Origin)
 	fmt.Println(msg.String())
 }
 
@@ -29,6 +30,7 @@ func (gsp *Gossiper) sendPrivateMessage(msg *message.PrivateMessage) {
 		if msg.Origin == gsp.Name {
 			// we are the origin of this message --> store it to retrieve it in conversation
 			gsp.PrivateStorage.Store(msg, msg.Destination)
+			gsp.UIStorage.StorePrivateMsgAsync(msg, msg.Destination)
 		}
 		gsp.send(gp, nextHopAddr)
 	}

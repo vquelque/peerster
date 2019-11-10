@@ -57,8 +57,8 @@ func msgHandler(gsp *gossiper.Gossiper) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "GET":
-			var rumorMessageList []message.RumorMessage
-			rumorMessageList = gsp.RumorStorage.GetAll()
+			var rumorMessageList []*message.RumorMessage
+			rumorMessageList = gsp.UIStorage.GetAllRumors()
 			mmsgListJSON, err := json.Marshal(rumorMessageList)
 			if err != nil {
 				return
@@ -118,7 +118,7 @@ func privateMsgHandler(gsp *gossiper.Gossiper) http.HandlerFunc {
 		switch r.Method {
 		case "GET":
 			peer := r.FormValue("peer")
-			m := gsp.PrivateStorage.GetAllForPeer(peer)
+			m := gsp.UIStorage.GetPrivateMessagesForPeer(peer)
 			mJSON, err := json.Marshal(m)
 			if err != nil {
 				return
@@ -133,7 +133,6 @@ func privateMsgHandler(gsp *gossiper.Gossiper) http.HandlerFunc {
 			}
 			peer := r.FormValue("peer")
 			messageText := r.FormValue("message")
-			print(messageText)
 			cliMsg := &message.Message{Text: messageText, Destination: peer}
 			gsp.ProcessClientMessage(cliMsg)
 			http.Redirect(w, r, r.Header.Get("/privateMsg?peer="+peer), 302)
@@ -154,7 +153,6 @@ func fileUploadHandler(gsp *gossiper.Gossiper) http.HandlerFunc {
 				//checking whether any error occurred retrieving image
 			}
 			cliMsg := &message.Message{File: filename}
-			//	println(filename)
 			gsp.ProcessClientMessage(cliMsg)
 			http.Redirect(w, r, r.Header.Get("/"), 302)
 		}

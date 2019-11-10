@@ -33,6 +33,10 @@ func (gsp *Gossiper) processRumorMessage(msg *message.RumorMessage, sender strin
 		// increase mID for peer and store message
 		gsp.VectorClock.IncrementMIDForPeer(msg.Origin)
 		gsp.RumorStorage.Store(msg)
+		if msg.Text != "" {
+			//not route rumor => append to UI
+			gsp.UIStorage.AppendRumorAsync(msg)
+		}
 		//pick random peer and rumormonger
 		randPeer := gsp.Peers.PickRandomPeer(sender)
 		if randPeer != "" {
