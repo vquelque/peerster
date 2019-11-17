@@ -8,6 +8,8 @@ type Message struct {
 	Destination string
 	File        string
 	Request     []byte
+	Keywords    []string
+	Budget      uint64
 }
 
 //Print client message

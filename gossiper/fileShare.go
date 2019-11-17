@@ -29,7 +29,7 @@ func (gsp *Gossiper) processFile(filename string) {
 
 	buffer := make([]byte, constant.ChunkSize)
 	metafile := make([]byte, 0)
-	var count uint32 = 0
+	var count uint64 = 0
 
 	for {
 		//for each chunk of 8KB
@@ -101,7 +101,7 @@ func (gsp *Gossiper) startFileDownload(metahash utils.SHA256, peer string, filen
 			chunksHash = append(chunksHash, hash)
 		}
 		// download all the chunks
-		for file.ChunkCount < uint32(toDownload) {
+		for file.ChunkCount < uint64(toDownload) {
 			h := chunksHash[file.ChunkCount]
 			chunk := gsp.FileStorage.GetChunkOrMeta(h)
 			if chunk == nil {

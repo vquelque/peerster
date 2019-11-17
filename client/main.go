@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"strings"
 
 	"github.com/dedis/protobuf"
 	"github.com/vquelque/Peerster/message"
@@ -18,6 +19,8 @@ func main() {
 	destination := flag.String("dest", "", "destination for the private message. can be omitted")
 	file := flag.String("file", "", "file to be indexed by the gossiper")
 	request := flag.String("request", "", "request a chunk or metafile of this hash")
+	keywords := flag.String("keywords", "", "list of keywords to search in filename")
+	budget := flag.Uint64("budget", 2, "budget for file search")
 
 	flag.Parse()
 
@@ -46,6 +49,10 @@ func main() {
 		msg.Request = data
 		msg.Destination = *destination
 		msg.File = *file
+	} else if *keywords != "" {
+		keywords := strings.Split(*keywords, ",")
+		msg.Keywords = keywords
+		msg.Budget = *budget
 	} else {
 		log.Fatal("ERROR (Bad argument combination)")
 	}

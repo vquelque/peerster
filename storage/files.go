@@ -1,8 +1,10 @@
 package storage
 
 import (
+	"crypto/sha256"
 	"log"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/vquelque/Peerster/utils"
@@ -11,7 +13,7 @@ import (
 type File struct {
 	Name         string
 	MetafileHash utils.SHA256
-	ChunkCount   uint32
+	ChunkCount   uint64
 	Completed    bool
 }
 
@@ -107,4 +109,24 @@ func (fs *FileStorage) WriteChunksToFile(chunks []utils.SHA256, file *os.File) {
 		data := fs.chunks[h]
 		file.Write(data.Data)
 	}
+}
+
+func (fs *FileStorage) SearchForFile(keyword string) []*File {
+	fs.lock.RLock()
+	defer fs.lock.RUnlock()
+	matchingFiles := make([]*File, 0)
+	for _, f := range fs.files {
+		if strings.Contains(f.Name, keyword) {
+			matchingFiles = append(matchingFiles, f)
+		}
+	}
+	return matchingFiles
+}
+
+func (fs *FileStorage) ChunkCount(metahash utils.SHA256) uint64 {
+	fs.lock.RLock()
+	defer fs.lock.RUnlock()
+	meta := fs.metafiles[metahash]
+	count := uint64(len(meta) / sha256.Size)
+	return count
 }

@@ -25,6 +25,9 @@ func (gsp *Gossiper) ProcessClientMessage(msg *message.Message) {
 		} else if len(msg.Request) != 0 && msg.Destination != "" {
 			h := utils.SliceToHash(msg.Request)
 			gsp.startFileDownload(h, msg.Destination, msg.File)
+		} else if len(msg.Keywords) > 0 && msg.Budget != 0 {
+			sr := message.NewSearchRequest(msg.Keywords, msg.Budget)
+			gsp.processSearchRequest(sr)
 		} else {
 			//rumor message
 			mID := gsp.VectorClock.NextMessageForPeer(gsp.Name)

@@ -45,6 +45,26 @@ type DataReply struct {
 	Data        []byte
 }
 
+type SearchRequest struct {
+	Origin   string
+	Budget   uint64
+	Keywords []string
+}
+
+type SearchReply struct {
+	Origin      string
+	Destination string
+	HopLimit    uint32
+	Results     []*SearchResult
+}
+
+type SearchResult struct {
+	FileName     string
+	MetafileHash []byte
+	ChunkMap     []uint64
+	ChunkCount   uint64
+}
+
 //NewSimpleMessage creates a new simpleMessage.
 func NewSimpleMessage(contents string, originalName string, relayPeerAddr string) *SimpleMessage {
 	return &SimpleMessage{
@@ -115,6 +135,28 @@ func NewDataRequest(origin string, destination string, hoplimit uint32, hashValu
 		HashValue:   hashValue[:],
 	}
 	return dr
+}
+
+func NewSearchRequest(keywords []string, budget uint64) *SearchRequest {
+	return &SearchRequest{Keywords: keywords, Budget: budget}
+}
+
+func NewSearchResult(filename string, metafile []byte, chunkMap []uint64, chunkCount uint64) *SearchResult {
+	return &SearchResult{
+		FileName:     filename,
+		MetafileHash: metafile,
+		ChunkMap:     chunkMap,
+		ChunkCount:   chunkCount,
+	}
+}
+
+func NewSearchReply(origin string, destination string, hoplimit uint32, results []*SearchResult) *SearchReply {
+	return &SearchReply{
+		Origin:      origin,
+		Destination: destination,
+		HopLimit:    hoplimit,
+		Results:     results,
+	}
 }
 
 //Prints a RumorMessage

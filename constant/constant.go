@@ -9,3 +9,5 @@ const FileTempDirectory = "./_SharedFiles/"
 const FileOutDirectory = "./_Downloads/"
 const MaxChunkDownloadTries = 10
 const Timeout = 5 //in seconds
+
+const SearchRequestTimeout = 500 //in ms

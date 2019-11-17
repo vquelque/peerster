@@ -35,16 +35,19 @@ type Gossiper struct {
 	Routing               *routing.Routing
 	Rtimer                int
 	UIStorage             *storage.UIStorage
+	PendingSearchRequest  *storage.PendingRequests
 }
 
 // GossipPacket is the only type of packet sent to other peers.
 type GossipPacket struct {
-	Simple       *message.SimpleMessage
-	RumorMessage *message.RumorMessage
-	StatusPacket *vector.StatusPacket
-	Private      *message.PrivateMessage
-	DataRequest  *message.DataRequest
-	DataReply    *message.DataReply
+	Simple        *message.SimpleMessage
+	RumorMessage  *message.RumorMessage
+	StatusPacket  *vector.StatusPacket
+	Private       *message.PrivateMessage
+	DataRequest   *message.DataRequest
+	DataReply     *message.DataReply
+	SearchRequest *message.SearchRequest
+	SearchReply   *message.SearchReply
 }
 
 // Encapsulate received messages from peers/client to put in the queue
