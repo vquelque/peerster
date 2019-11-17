@@ -54,9 +54,10 @@ func (gsp *Gossiper) sendSearchReply(r *message.SearchReply) {
 
 func (gsp *Gossiper) distributeSearchRequest(sr *message.SearchRequest) {
 	neighbors := gsp.Peers.GetAllPeers()
+	peers := uint64(len(neighbors))
 	//split remaining budget evenly accross peers
-	mBudget := sr.Budget / uint64(len(neighbors))
-	rBudget := sr.Budget % uint64(len(neighbors))
+	mBudget := sr.Budget / peers
+	rBudget := sr.Budget % peers
 	msr := message.NewSearchRequest(sr.Keywords, mBudget)
 	rsr := message.NewSearchRequest(sr.Keywords, mBudget+1)
 	for _, p := range neighbors {
@@ -85,6 +86,8 @@ func (gsp *Gossiper) registerSearchRequest(sr *message.SearchRequest) {
 }
 
 func (gsp *Gossiper) sendSearchRequest(sr *message.SearchRequest, peer string) {
-	gp := &GossipPacket{SearchRequest: sr}
-	gsp.send(gp, peer)
+	if sr.Budget > 0 {
+		gp := &GossipPacket{SearchRequest: sr}
+		gsp.send(gp, peer)
+	}
 }
