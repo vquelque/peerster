@@ -42,11 +42,20 @@ func (gsp *Gossiper) processSearchRequest(sr *message.SearchRequest) {
 	}
 }
 
+func (gsp *Gossiper) processSearchReply(r *message.SearchReply) {
+	// received a reply check if it is for us else forward
+	if r.Destination != gsp.Name {
+		gsp.sendSearchReply(r)
+		return
+	}
+	for sr := gsp.WaitingForSearchReply
+}
+
 func (gsp *Gossiper) sendSearchReply(r *message.SearchReply) {
 	r.HopLimit = r.HopLimit - 1
 	gp := &GossipPacket{SearchReply: r}
 	nextHopAddr := gsp.Routing.GetRoute(r.Destination)
-	// fmt.Printf("SENDING Search REPLY TO DEST %s VIA %s \n", r.Destination, nextHopAddr)
+	// fmt.Printf("SENDING SEARCH REPLY TO DEST %s VIA %s \n", r.Destination, nextHopAddr)
 	if nextHopAddr != "" {
 		gsp.send(gp, nextHopAddr)
 	}
@@ -80,7 +89,7 @@ func (gsp *Gossiper) registerSearchRequest(sr *message.SearchRequest) {
 		case <-timer.C:
 			// timer elapsed : unregister search request
 			gsp.PendingSearchRequest.Delete(sr)
-			return
+			timer.Stop()
 		}
 	}()
 }
@@ -89,5 +98,34 @@ func (gsp *Gossiper) sendSearchRequest(sr *message.SearchRequest, peer string) {
 	if sr.Budget > 0 {
 		gp := &GossipPacket{SearchRequest: sr}
 		gsp.send(gp, peer)
+	}
+}
+
+// search request initiated from this peer
+func (gsp *Gossiper) startSearchRequest(keywords []string, budget uint64) {
+	//TODO CHECK IF WE DO NOT STILL HAVE A PENDING REQUEST FOR THIS KEYWORD ?
+	sr := message.NewSearchRequest(keywords, budget)
+	gsp.distributeSearchRequest(sr)
+	rTimerDuration := time.Duration(constant.SearchRequestResendTimer) * time.Second
+	timer := time.NewTicker(rTimerDuration)
+	matches := 0
+	match := gsp.WaitingForSearchReply.RegisterSearchObserver(sr)
+	defer func() {
+		gsp.WaitingForSearchReply.UnregisterSearchObserver(sr)
+		timer.Stop()
+	}()
+	for {
+		select {
+		case <-timer.C:
+			if sr.Budget < constant.MaxBudget {
+				sr.Budget = sr.Budget * 2
+				gsp.distributeSearchRequest(sr)
+			}
+		case <-match:
+			matches++
+			if matches >= constant.SearchMatchThreshold {
+				return
+			}
+		}
 	}
 }

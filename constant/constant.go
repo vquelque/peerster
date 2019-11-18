@@ -11,3 +11,7 @@ const MaxChunkDownloadTries = 10
 const Timeout = 5 //in seconds
 
 const SearchRequestTimeout = 500 //in ms
+const DefaultSearchBudget = 2
+const SearchRequestResendTimer = 1
+const MaxBudget = 32
+const SearchMatchThreshold = 2

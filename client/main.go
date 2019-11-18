@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/dedis/protobuf"
+	"github.com/vquelque/Peerster/constant"
 	"github.com/vquelque/Peerster/message"
 )
 
@@ -20,7 +21,7 @@ func main() {
 	file := flag.String("file", "", "file to be indexed by the gossiper")
 	request := flag.String("request", "", "request a chunk or metafile of this hash")
 	keywords := flag.String("keywords", "", "list of keywords to search in filename")
-	budget := flag.Uint64("budget", 2, "budget for file search")
+	budget := flag.Uint64("budget", constant.DefaultSearchBudget, "budget for file search")
 
 	flag.Parse()
 

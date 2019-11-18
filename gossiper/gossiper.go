@@ -30,6 +30,7 @@ type Gossiper struct {
 	Active                sync.WaitGroup         //Active go routines.
 	WaitingForAck         *observer.Observer     //registered go routines channels waiting for an ACK.
 	WaitingForData        *observer.FileObserver //registered routines waiting for file data
+	WaitingForSearchReply *observer.SearchObserver
 	AntiEntropyTimer      int
 	ResetAntiEntropyTimer chan bool
 	Routing               *routing.Routing
@@ -68,6 +69,7 @@ func NewGossiper(address string, name string, uiPort int, peersList string, simp
 	fileStorage := storage.NewFileStorage()
 	waitingForAck := observer.Init()
 	waitingForData := observer.InitFileObserver()
+	waitingForSearchReply := observer.InitSearchObserver()
 	resetAntiEntropyChan := make(chan (bool))
 	routing := routing.NewRoutingTable()
 	uiStorage := storage.NewUIStorage()
@@ -84,6 +86,7 @@ func NewGossiper(address string, name string, uiPort int, peersList string, simp
 		FileStorage:           fileStorage,
 		WaitingForAck:         waitingForAck,
 		WaitingForData:        waitingForData,
+		WaitingForSearchReply: waitingForSearchReply,
 		Active:                sync.WaitGroup{},
 		AntiEntropyTimer:      antiEntropyTimer,
 		ResetAntiEntropyTimer: resetAntiEntropyChan,
@@ -202,6 +205,10 @@ func (gsp *Gossiper) processMessages(peerMsgs <-chan *receivedPackets, clientMsg
 				go gsp.processDataRequest(gp.DataRequest)
 			case gp.DataReply != nil:
 				go gsp.processDataReply(gp.DataReply)
+			case gp.SearchRequest != nil:
+				go gsp.processSearchRequest(gp.SearchRequest)
+			case gp.SearchReply != nil:
+				go gsp.processSearchReply(gp.SearchReply)
 			}
 		case cliMsg := <-clientMsgs:
 			msg := &message.Message{}

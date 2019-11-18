@@ -20,6 +20,11 @@ type FileObserver struct {
 	lock           sync.RWMutex
 }
 
+type SearchObserver struct {
+	waitingForReply map[*message.SearchRequest]chan bool
+	lock            sync.RWMutex
+}
+
 func Init() *Observer {
 	obs := &Observer{make(map[string]chan bool), sync.RWMutex{}}
 	return obs
@@ -88,4 +93,40 @@ func (obs *FileObserver) SendDataToObserver(caller utils.SHA256, chunk *message.
 		return nil
 	}
 	return fmt.Errorf("No observer found for this reply")
+}
+
+func InitSearchObserver() *SearchObserver {
+	obs := &SearchObserver{make(map[*message.SearchRequest]chan bool), sync.RWMutex{}}
+	return obs
+}
+
+func (obs *SearchObserver) RegisterSearchObserver(sr *message.SearchRequest) chan bool {
+	obs.lock.Lock()
+	defer obs.lock.Unlock()
+	ch := make(chan bool)
+	obs.waitingForReply[sr] = ch
+	return ch
+}
+
+func (obs *SearchObserver) UnregisterSearchObserver(sr *message.SearchRequest) {
+	obs.lock.Lock()
+	defer obs.lock.Unlock()
+	ackChan, found := obs.waitingForReply[sr]
+	if found && ackChan != nil {
+		close(ackChan)
+		delete(obs.waitingForReply, sr)
+	}
+}
+
+func (obs *SearchObserver) SendMatchToSearchObserver(keyword string) {
+	obs.lock.RLock()
+	defer obs.lock.RUnlock()
+	for sr, m := range obs.waitingForReply {
+		keywords := sr.Keywords
+		for _, k := range keywords {
+			if k == keyword {
+				m <- true
+			}
+		}
+	}
 }
