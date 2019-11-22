@@ -1,41 +1,99 @@
 package storage
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/vquelque/Peerster/message"
+	"github.com/vquelque/Peerster/utils"
 )
 
 type PendingRequests struct {
-	requests map[*message.SearchRequest]bool
+	requests map[string]bool
 	lock     sync.RWMutex
 }
 
+type SearchResults struct {
+	results map[utils.SHA256]map[uint64]string // file metahash --> chiunkcount --> peer
+	lock    sync.RWMutex
+}
+
 func NewPendingRequests() *PendingRequests {
-	return &PendingRequests{requests: make(map[*message.SearchRequest]bool), lock: sync.RWMutex{}}
+	return &PendingRequests{requests: make(map[string]bool), lock: sync.RWMutex{}}
+}
+
+func NewSearchResult() *SearchResults {
+	return &SearchResults{results: make(map[utils.SHA256]map[uint64]string, 0), lock: sync.RWMutex{}}
 }
 
 func (pr *PendingRequests) Add(r *message.SearchRequest) {
 	pr.lock.Lock()
 	defer pr.lock.Unlock()
-	_, ok := pr.requests[r]
+	_, ok := pr.requests[GetRequestID(r)]
 	if !ok {
-		pr.requests[r] = true
+		pr.requests[GetRequestID(r)] = true
 	}
 }
 
 func (pr *PendingRequests) Delete(r *message.SearchRequest) {
 	pr.lock.Lock()
 	defer pr.lock.Unlock()
-	_, ok := pr.requests[r]
+	_, ok := pr.requests[GetRequestID(r)]
 	if ok {
-		delete(pr.requests, r)
+		delete(pr.requests, GetRequestID(r))
 	}
 }
 
-func (pr *PendingRequests) CheckRequestPresent(r *message.SearchRequest) bool {
+func (pr *PendingRequests) CheckPendingRequestPresent(r *message.SearchRequest) bool {
 	pr.lock.RLock()
 	defer pr.lock.RUnlock()
-	_, ok := pr.requests[r]
+	_, ok := pr.requests[GetRequestID(r)]
 	return ok
+}
+
+func (sr *SearchResults) AddSearchResult(r *message.SearchResult, origin string) {
+	sr.lock.Lock()
+	defer sr.lock.Unlock()
+	metahash := utils.SliceToHash(r.MetafileHash)
+	_, found := sr.results[metahash]
+	if !found {
+		sr.results[metahash] = make(map[uint64]string, r.ChunkCount)
+	}
+	for _, c := range r.ChunkMap {
+		sr.results[metahash][c] = origin
+	}
+}
+
+func (sr *SearchResults) IsComplete(metahash utils.SHA256) bool {
+	sr.lock.RLock()
+	defer sr.lock.RUnlock()
+	for _, c := range sr.results[metahash] {
+		if c == "" {
+			return false
+		}
+	}
+	return true
+}
+
+func (sr *SearchResults) GetChunksSourceMap(metahash utils.SHA256) map[uint64]string {
+	sr.lock.RLock()
+	defer sr.lock.RUnlock()
+	cMap, found := sr.results[metahash]
+	if found {
+		return cMap
+	}
+	return nil
+}
+
+func (sr *SearchResults) Clear(metahash utils.SHA256) {
+	sr.lock.Lock()
+	defer sr.lock.Unlock()
+	_, found := sr.results[metahash]
+	if found {
+		delete(sr.results, metahash)
+	}
+}
+
+func GetRequestID(r *message.SearchRequest) string {
+	return fmt.Sprintf("%s:%s", r.Origin, r.Keywords)
 }

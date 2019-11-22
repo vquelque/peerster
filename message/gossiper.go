@@ -137,8 +137,8 @@ func NewDataRequest(origin string, destination string, hoplimit uint32, hashValu
 	return dr
 }
 
-func NewSearchRequest(keywords []string, budget uint64) *SearchRequest {
-	return &SearchRequest{Keywords: keywords, Budget: budget}
+func NewSearchRequest(origin string, keywords []string, budget uint64) *SearchRequest {
+	return &SearchRequest{Origin: origin, Keywords: keywords, Budget: budget}
 }
 
 func NewSearchResult(filename string, metafile []byte, chunkMap []uint64, chunkCount uint64) *SearchResult {
@@ -151,12 +151,13 @@ func NewSearchResult(filename string, metafile []byte, chunkMap []uint64, chunkC
 }
 
 func NewSearchReply(origin string, destination string, hoplimit uint32, results []*SearchResult) *SearchReply {
-	return &SearchReply{
+	sr := &SearchReply{
 		Origin:      origin,
 		Destination: destination,
 		HopLimit:    hoplimit,
 		Results:     results,
 	}
+	return sr
 }
 
 //Prints a RumorMessage

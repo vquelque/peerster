@@ -1,20 +1,24 @@
 package gossiper
 
 import (
+	"fmt"
+	"log"
 	"time"
 
 	"github.com/vquelque/Peerster/constant"
 	"github.com/vquelque/Peerster/message"
 	"github.com/vquelque/Peerster/storage"
+	"github.com/vquelque/Peerster/utils"
 )
 
 func (gsp *Gossiper) processSearchRequest(sr *message.SearchRequest) {
-	// check if we already received this request
-	if gsp.PendingSearchRequest.CheckRequestPresent(sr) {
+	if gsp.PendingSearchRequest.CheckPendingRequestPresent(sr) {
 		// search request already received -> do not process
+		fmt.Printf("SR ALREADY REGISTERED \n")
 		return
 	}
 	gsp.registerSearchRequest(sr)
+	fmt.Printf("PROCESSING SEARCH REQUEST FROM %s\n", sr.Origin)
 	// search for local files matching a keyword
 	var matches []*storage.File
 	var results []*message.SearchResult
@@ -24,7 +28,7 @@ func (gsp *Gossiper) processSearchRequest(sr *message.SearchRequest) {
 	}
 	for _, f := range matches {
 		count := gsp.FileStorage.ChunkCount(f.MetafileHash)
-		chunks := make([]uint64, count)
+		chunks := make([]uint64, 0)
 		var index uint64
 		for index = 0; index < count; index++ {
 			chunks = append(chunks, index)
@@ -33,11 +37,13 @@ func (gsp *Gossiper) processSearchRequest(sr *message.SearchRequest) {
 		results = append(results, sr)
 	}
 	if len(matches) > 0 {
+		log.Printf("GOT MATCHING FILE SENDING REPLY\n")
 		reply := message.NewSearchReply(gsp.Name, sr.Origin, constant.DefaultHopLimit, results)
 		gsp.sendSearchReply(reply)
 	}
 	sr.Budget = sr.Budget - 1
 	if sr.Budget > 0 {
+		log.Printf("DISTRIBUTING REQUEST WITH BUDGET %d", sr.Budget)
 		gsp.distributeSearchRequest(sr)
 	}
 }
@@ -48,14 +54,17 @@ func (gsp *Gossiper) processSearchReply(r *message.SearchReply) {
 		gsp.sendSearchReply(r)
 		return
 	}
-	for sr := gsp.WaitingForSearchReply
+	for _, sr := range r.Results {
+		gsp.WaitingForSearchReply.SendMatchToSearchObserver(r, sr.FileName)
+	}
+
 }
 
 func (gsp *Gossiper) sendSearchReply(r *message.SearchReply) {
 	r.HopLimit = r.HopLimit - 1
 	gp := &GossipPacket{SearchReply: r}
 	nextHopAddr := gsp.Routing.GetRoute(r.Destination)
-	// fmt.Printf("SENDING SEARCH REPLY TO DEST %s VIA %s \n", r.Destination, nextHopAddr)
+	fmt.Printf("SENDING SEARCH REPLY TO DEST %s VIA %s \n", r.Destination, nextHopAddr)
 	if nextHopAddr != "" {
 		gsp.send(gp, nextHopAddr)
 	}
@@ -67,12 +76,13 @@ func (gsp *Gossiper) distributeSearchRequest(sr *message.SearchRequest) {
 	//split remaining budget evenly accross peers
 	mBudget := sr.Budget / peers
 	rBudget := sr.Budget % peers
-	msr := message.NewSearchRequest(sr.Keywords, mBudget)
-	rsr := message.NewSearchRequest(sr.Keywords, mBudget+1)
+	log.Printf("mBudget %d, rBudget %d \n", mBudget, rBudget)
+	msr := message.NewSearchRequest(sr.Origin, sr.Keywords, mBudget)
+	rsr := message.NewSearchRequest(sr.Origin, sr.Keywords, mBudget+1)
 	for _, p := range neighbors {
 		if rBudget > 0 {
 			gsp.sendSearchRequest(rsr, p)
-			rBudget--
+			rBudget = rBudget - 1
 		} else {
 			gsp.sendSearchRequest(msr, p)
 		}
@@ -81,6 +91,7 @@ func (gsp *Gossiper) distributeSearchRequest(sr *message.SearchRequest) {
 
 func (gsp *Gossiper) registerSearchRequest(sr *message.SearchRequest) {
 	gsp.PendingSearchRequest.Add(sr)
+	// log.Printf("REGISTERED SR WITH ID %s \n", storage.GetRequestID(sr))
 	rTimerDuration := time.Duration(constant.SearchRequestTimeout) * time.Millisecond
 	timer := time.NewTicker(rTimerDuration)
 	//deregister after timeout
@@ -88,6 +99,7 @@ func (gsp *Gossiper) registerSearchRequest(sr *message.SearchRequest) {
 		select {
 		case <-timer.C:
 			// timer elapsed : unregister search request
+			// log.Printf("UNREGISTERED SR WITH ID %s \n", storage.GetRequestID(sr))
 			gsp.PendingSearchRequest.Delete(sr)
 			timer.Stop()
 		}
@@ -96,6 +108,7 @@ func (gsp *Gossiper) registerSearchRequest(sr *message.SearchRequest) {
 
 func (gsp *Gossiper) sendSearchRequest(sr *message.SearchRequest, peer string) {
 	if sr.Budget > 0 {
+		log.Printf("Sending search request to %s with budget %d \n", peer, sr.Budget)
 		gp := &GossipPacket{SearchRequest: sr}
 		gsp.send(gp, peer)
 	}
@@ -104,12 +117,19 @@ func (gsp *Gossiper) sendSearchRequest(sr *message.SearchRequest, peer string) {
 // search request initiated from this peer
 func (gsp *Gossiper) startSearchRequest(keywords []string, budget uint64) {
 	//TODO CHECK IF WE DO NOT STILL HAVE A PENDING REQUEST FOR THIS KEYWORD ?
-	sr := message.NewSearchRequest(keywords, budget)
-	gsp.distributeSearchRequest(sr)
+	log.Printf("STARTING SEARCH REQUEST WITH KEYWORDS %s AND BUDGET %d", keywords, budget)
+	expandingSearch := false
+	if budget == 0 {
+		expandingSearch = true
+		budget = 2
+	}
+	sr := message.NewSearchRequest(gsp.Name, keywords, budget)
+	gsp.processSearchRequest(sr)
 	rTimerDuration := time.Duration(constant.SearchRequestResendTimer) * time.Second
 	timer := time.NewTicker(rTimerDuration)
 	matches := 0
 	match := gsp.WaitingForSearchReply.RegisterSearchObserver(sr)
+	haveAllChunks := make([]*message.SearchResult, 0)
 	defer func() {
 		gsp.WaitingForSearchReply.UnregisterSearchObserver(sr)
 		timer.Stop()
@@ -117,15 +137,41 @@ func (gsp *Gossiper) startSearchRequest(keywords []string, budget uint64) {
 	for {
 		select {
 		case <-timer.C:
-			if sr.Budget < constant.MaxBudget {
-				sr.Budget = sr.Budget * 2
-				gsp.distributeSearchRequest(sr)
+			if expandingSearch {
+				if sr.Budget < constant.MaxBudget {
+					sr.Budget = sr.Budget * 2
+					gsp.distributeSearchRequest(sr)
+					log.Printf("EXPANDING SEARCH CIRCLE BUDGET %d", sr.Budget)
+				}
 			}
-		case <-match:
-			matches++
+		case reply := <-match:
+			for _, r := range reply.Results {
+				fmt.Printf("FOUND match %s at node %s CHUNKS %#v", r.FileName, reply.Origin, r.ChunkMap)
+				gsp.SearchResults.AddSearchResult(r, reply.Origin)
+				if gsp.SearchResults.IsComplete(utils.SliceToHash(r.MetafileHash)) {
+					matches = matches + 1
+					haveAllChunks = append(haveAllChunks, r)
+				}
+			}
 			if matches >= constant.SearchMatchThreshold {
-				return
+				// exit the search. Clean the search results and append the files for
+				// which we can download all the chunks to the list.
+				for _, sr := range haveAllChunks {
+					fmt.Printf("SEARCH FINISHED \n")
+					metahash := utils.SliceToHash(sr.MetafileHash)
+					cMap := gsp.SearchResults.GetChunksSourceMap(metahash)
+					gsp.ToDownload.AddFileToDownload(metahash, sr.FileName, cMap)
+					gsp.UIStorage.AddDownloadableFile(sr.FileName, metahash)
+					gsp.SearchResults.Clear(metahash)
+					return
+				}
 			}
 		}
 	}
+}
+
+func (gsp *Gossiper) StartSearchedFileDownload(metahash utils.SHA256) {
+	filename := gsp.ToDownload.GetFilename(metahash)
+	sources := gsp.ToDownload.GetChunkSources(metahash)
+	gsp.startFileDownload(metahash, sources[0], filename, sources)
 }

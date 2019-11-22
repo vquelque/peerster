@@ -31,12 +31,26 @@ type FileStorage struct {
 	lock      sync.RWMutex
 }
 
+type ToDownload struct {
+	sources map[utils.SHA256]map[uint64]string //metahash -> chunks -> peer
+	name    map[utils.SHA256]string            //metahash -> filename
+	lock    sync.RWMutex
+}
+
 func NewFileStorage() *FileStorage {
 	return &FileStorage{
 		files:     make(map[utils.SHA256]*File),
 		chunks:    make(map[utils.SHA256]*Chunk),
 		metafiles: make(map[utils.SHA256]Metafile),
 		lock:      sync.RWMutex{},
+	}
+}
+
+func NewToDownload() *ToDownload {
+	return &ToDownload{
+		sources: make(map[utils.SHA256]map[uint64]string, 0),
+		name:    make(map[utils.SHA256]string),
+		lock:    sync.RWMutex{},
 	}
 }
 
@@ -115,7 +129,9 @@ func (fs *FileStorage) SearchForFile(keyword string) []*File {
 	fs.lock.RLock()
 	defer fs.lock.RUnlock()
 	matchingFiles := make([]*File, 0)
+	log.Printf("SEARCHING FOR FILES WITH KEYWORD %s \n", keyword)
 	for _, f := range fs.files {
+		log.Printf("filename %s \n", f.Name)
 		if strings.Contains(f.Name, keyword) {
 			matchingFiles = append(matchingFiles, f)
 		}
@@ -129,4 +145,33 @@ func (fs *FileStorage) ChunkCount(metahash utils.SHA256) uint64 {
 	meta := fs.metafiles[metahash]
 	count := uint64(len(meta) / sha256.Size)
 	return count
+}
+
+func (td *ToDownload) AddFileToDownload(metahash utils.SHA256, filename string, chunks map[uint64]string) {
+	td.lock.Lock()
+	defer td.lock.Unlock()
+	td.sources[metahash] = chunks
+	td.name[metahash] = filename
+}
+
+func (td *ToDownload) RemoveFileFromDownloadable(metahash utils.SHA256, filename string) {
+	td.lock.Lock()
+	defer td.lock.Unlock()
+	_, found := td.sources[metahash]
+	if found {
+		delete(td.sources, metahash)
+		delete(td.name, metahash)
+	}
+}
+
+func (td *ToDownload) GetFilename(metahash utils.SHA256) string {
+	td.lock.RLock()
+	defer td.lock.RUnlock()
+	return td.name[metahash]
+}
+
+func (td *ToDownload) GetChunkSources(metahash utils.SHA256) map[uint64]string {
+	td.lock.RLock()
+	defer td.lock.RUnlock()
+	return td.sources[metahash]
 }

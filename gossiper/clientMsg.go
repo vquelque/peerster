@@ -24,7 +24,7 @@ func (gsp *Gossiper) ProcessClientMessage(msg *message.Message) {
 			gsp.processFile(msg.File)
 		} else if len(msg.Request) != 0 && msg.Destination != "" {
 			h := utils.SliceToHash(msg.Request)
-			gsp.startFileDownload(h, msg.Destination, msg.File)
+			gsp.startFileDownload(h, msg.Destination, msg.File, nil)
 		} else if len(msg.Keywords) > 0 {
 			gsp.startSearchRequest(msg.Keywords, msg.Budget)
 		} else {

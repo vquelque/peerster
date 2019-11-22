@@ -37,6 +37,8 @@ type Gossiper struct {
 	Rtimer                int
 	UIStorage             *storage.UIStorage
 	PendingSearchRequest  *storage.PendingRequests
+	SearchResults         *storage.SearchResults
+	ToDownload            *storage.ToDownload
 }
 
 // GossipPacket is the only type of packet sent to other peers.
@@ -61,7 +63,6 @@ type receivedPackets struct {
 func NewGossiper(address string, name string, uiPort int, peersList string, simple bool, antiEntropyTimer int, rtimer int) *Gossiper {
 	peersSocket := socket.NewUDPSocket(address)
 	uiSocket := socket.NewUDPSocket(fmt.Sprintf("127.0.0.1:%d", uiPort))
-
 	peersSet := peers.NewPeersSet(peersList)
 	vectorClock := vector.NewVector()
 	rumorStorage := storage.NewRumorStorage()
@@ -73,6 +74,9 @@ func NewGossiper(address string, name string, uiPort int, peersList string, simp
 	resetAntiEntropyChan := make(chan (bool))
 	routing := routing.NewRoutingTable()
 	uiStorage := storage.NewUIStorage()
+	searchResults := storage.NewSearchResult()
+	toDownload := storage.NewToDownload()
+	pendingSearchRequest := storage.NewPendingRequests()
 
 	return &Gossiper{
 		Name:                  name,
@@ -93,6 +97,9 @@ func NewGossiper(address string, name string, uiPort int, peersList string, simp
 		Routing:               routing,
 		Rtimer:                rtimer,
 		UIStorage:             uiStorage,
+		SearchResults:         searchResults,
+		ToDownload:            toDownload,
+		PendingSearchRequest:  pendingSearchRequest,
 	}
 }
 

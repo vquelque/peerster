@@ -2,6 +2,8 @@ package observer
 
 import (
 	"fmt"
+	"log"
+	"strings"
 	"sync"
 
 	"github.com/vquelque/Peerster/message"
@@ -21,7 +23,7 @@ type FileObserver struct {
 }
 
 type SearchObserver struct {
-	waitingForReply map[*message.SearchRequest]chan bool
+	waitingForReply map[*message.SearchRequest]chan *message.SearchReply
 	lock            sync.RWMutex
 }
 
@@ -96,14 +98,14 @@ func (obs *FileObserver) SendDataToObserver(caller utils.SHA256, chunk *message.
 }
 
 func InitSearchObserver() *SearchObserver {
-	obs := &SearchObserver{make(map[*message.SearchRequest]chan bool), sync.RWMutex{}}
+	obs := &SearchObserver{make(map[*message.SearchRequest]chan *message.SearchReply), sync.RWMutex{}}
 	return obs
 }
 
-func (obs *SearchObserver) RegisterSearchObserver(sr *message.SearchRequest) chan bool {
+func (obs *SearchObserver) RegisterSearchObserver(sr *message.SearchRequest) chan *message.SearchReply {
 	obs.lock.Lock()
 	defer obs.lock.Unlock()
-	ch := make(chan bool)
+	ch := make(chan *message.SearchReply)
 	obs.waitingForReply[sr] = ch
 	return ch
 }
@@ -118,14 +120,16 @@ func (obs *SearchObserver) UnregisterSearchObserver(sr *message.SearchRequest) {
 	}
 }
 
-func (obs *SearchObserver) SendMatchToSearchObserver(keyword string) {
+func (obs *SearchObserver) SendMatchToSearchObserver(r *message.SearchReply, keyword string) {
 	obs.lock.RLock()
 	defer obs.lock.RUnlock()
 	for sr, m := range obs.waitingForReply {
 		keywords := sr.Keywords
 		for _, k := range keywords {
-			if k == keyword {
-				m <- true
+			// log.Printf("KEYWORD : %s. REPLY KEYWORD %s", keywords, keyword)
+			if strings.Contains(keyword, k) {
+				log.Printf("GOT OBSERVER FOR SR with KEYWORD %s", keyword)
+				m <- r
 			}
 		}
 	}
