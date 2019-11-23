@@ -22,9 +22,14 @@ func (gsp *Gossiper) ProcessClientMessage(msg *message.Message) {
 			gsp.processPrivateMessage(m)
 		} else if msg.File != "" && len(msg.Request) == 0 {
 			gsp.processFile(msg.File)
-		} else if len(msg.Request) != 0 && msg.Destination != "" {
+		} else if len(msg.Request) != 0 {
 			h := utils.SliceToHash(msg.Request)
-			gsp.startFileDownload(h, msg.Destination, msg.File, nil)
+			if msg.Destination != "" {
+				gsp.startFileDownload(h, msg.Destination, msg.File, nil)
+			} else {
+				chunkSources := gsp.ToDownload.GetChunkSources(h)
+				gsp.startFileDownload(h, chunkSources[0], msg.File, chunkSources)
+			}
 		} else if len(msg.Keywords) > 0 {
 			gsp.startSearchRequest(msg.Keywords, msg.Budget)
 		} else {

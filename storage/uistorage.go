@@ -73,7 +73,7 @@ func (sto *UIStorage) GetPrivateMessagesForPeer(peer string) []message.PrivateMe
 func (sto *UIStorage) AddDownloadableFile(filename string, metahash utils.SHA256) {
 	sto.DownloadableFiles.Lock.Lock()
 	defer sto.DownloadableFiles.Lock.Unlock()
-	sto.DownloadableFiles.Downloadable[fmt.Sprint(metahash)] = filename
+	sto.DownloadableFiles.Downloadable[fmt.Sprintf("%x", metahash)] = filename
 }
 
 func (sto *UIStorage) RemoveDownloadableFile(metahash utils.SHA256) {

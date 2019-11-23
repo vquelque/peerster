@@ -71,15 +71,30 @@ $(document).ready(function() {
     });
   }
 
+  function downloadSearchedFile(metahash, filename) {
+    $.post("/downloadFile", {
+      metahash: metahash,
+      filename: filename,
+      peer: ""
+    });
+  }
+
   function searchResults() {
     $.getJSON("/searchResults", function(data) {
       var items = [];
       $.each(data, function(key, val) {
         items.push(
-          "<li id='" + key + "' class='searchResultItem'>" + val + "</li>"
+          "<li class='searchResultItem' id='" + key + "'>" + val + "</li>"
         );
       });
       $(".downloadableList").html(items.join(""));
+      $(".searchResultItem").each(function(index) {
+        $(this).on("click", function() {
+          var name = $(this).text();
+          var metahash = $(this).attr("id");
+          downloadSearchedFile(metahash, name);
+        });
+      });
     });
   }
 
