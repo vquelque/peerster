@@ -27,8 +27,7 @@ func (gsp *Gossiper) ProcessClientMessage(msg *message.Message) {
 			if msg.Destination != "" {
 				gsp.startFileDownload(h, msg.Destination, msg.File, nil)
 			} else {
-				chunkSources := gsp.ToDownload.GetChunkSources(h)
-				gsp.startFileDownload(h, chunkSources[0], msg.File, chunkSources)
+				gsp.StartSearchedFileDownload(h)
 			}
 		} else if len(msg.Keywords) > 0 {
 			gsp.startSearchRequest(msg.Keywords, msg.Budget)

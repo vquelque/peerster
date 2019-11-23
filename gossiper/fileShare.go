@@ -68,7 +68,7 @@ func (gsp *Gossiper) startFileDownload(metahash utils.SHA256, peer string, filen
 	// 	return
 	// }
 	if file == nil {
-		file = &storage.File{Name: filename, MetafileHash: metahash, ChunkCount: 0}
+		file = &storage.File{Name: filename, MetafileHash: metahash, ChunkCount: 0, Completed: false}
 	}
 	go func() {
 		//get or request metafile
@@ -89,6 +89,7 @@ func (gsp *Gossiper) startFileDownload(metahash utils.SHA256, peer string, filen
 		}
 		meta = gsp.FileStorage.GetMetafile(metahash)
 		toDownload := len(meta) / sha256.Size //number of chunks to download
+		file.ChunkCount = uint64(toDownload)
 		//	fmt.Printf("TO DOWN : %d \n", toDownload)
 
 		// create the slice of all hashes
@@ -100,15 +101,16 @@ func (gsp *Gossiper) startFileDownload(metahash utils.SHA256, peer string, filen
 			copy(hash[:], meta[j:k])
 			chunksHash = append(chunksHash, hash)
 		}
+		var downloadedCount uint64 = 0
 		// download all the chunks
-		for file.ChunkCount < uint64(toDownload) {
-			h := chunksHash[file.ChunkCount]
+		for downloadedCount < uint64(toDownload) {
+			h := chunksHash[downloadedCount]
 			chunk := gsp.FileStorage.GetChunkOrMeta(h)
 			if chunk == nil {
 				if chunkSources != nil {
-					peer = chunkSources[file.ChunkCount]
+					peer = chunkSources[downloadedCount]
 				}
-				fmt.Printf("DOWNLOADING %s chunk %d from %s \n", filename, file.ChunkCount+1, peer)
+				fmt.Printf("DOWNLOADING %s chunk %d from %s \n", filename, downloadedCount+1, peer)
 				data, err := gsp.downloadFromPeer(h, peer)
 				if err != nil {
 					//ABORTING
@@ -119,7 +121,7 @@ func (gsp *Gossiper) startFileDownload(metahash utils.SHA256, peer string, filen
 				chunk := &storage.Chunk{Data: data, Hash: h}
 				gsp.FileStorage.StoreChunk(chunk)
 			}
-			file.ChunkCount++
+			downloadedCount++
 		}
 
 		// if _, err := os.Stat(FileOutDirectory); os.IsNotExist(err) {
@@ -136,7 +138,6 @@ func (gsp *Gossiper) startFileDownload(metahash utils.SHA256, peer string, filen
 		file.Completed = true
 		gsp.FileStorage.StoreFile(file, meta)
 		fmt.Printf("RECONSTRUCTED file %s \n", filename)
-
 		if chunkSources != nil {
 			// succesuffly downloaded file from search
 			gsp.ToDownload.RemoveFileFromDownloadable(metahash, filename)
@@ -229,4 +230,10 @@ func (gsp *Gossiper) forwardDataReply(r *message.DataReply) {
 	if nextHopAddr != "" {
 		gsp.send(gp, nextHopAddr)
 	}
+}
+
+func (gsp *Gossiper) startSearchedFileDownload(metahash utils.SHA256) {
+	chunkSources := gsp.ToDownload.GetChunkSources(metahash)
+	filename := gsp.ToDownload.GetFilename(metahash)
+	gsp.startFileDownload(metahash, chunkSources[0], filename, chunkSources)
 }
