@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/vquelque/Peerster/message"
@@ -19,7 +20,7 @@ type PrivateUIStorage struct {
 }
 
 type DownloadableFiles struct {
-	Downloadable map[utils.SHA256]string
+	Downloadable map[string]string
 	Lock         sync.RWMutex
 }
 
@@ -32,7 +33,7 @@ type UIStorage struct {
 func NewUIStorage() *UIStorage {
 	rumorStorage := &RumorUIStorage{Rumors: make([]*message.RumorMessage, 0), Lock: sync.RWMutex{}}
 	privateStorage := &PrivateUIStorage{PrivateMsg: make(map[string][]message.PrivateMessage, 0), Lock: sync.RWMutex{}}
-	downloadableFiles := &DownloadableFiles{Downloadable: make(map[utils.SHA256]string, 0)}
+	downloadableFiles := &DownloadableFiles{Downloadable: make(map[string]string, 0), Lock: sync.RWMutex{}}
 	return &UIStorage{RumorUIStorage: rumorStorage, PrivateUIStorage: privateStorage, DownloadableFiles: downloadableFiles}
 }
 
@@ -72,11 +73,11 @@ func (sto *UIStorage) GetPrivateMessagesForPeer(peer string) []message.PrivateMe
 func (sto *UIStorage) AddDownloadableFile(filename string, metahash utils.SHA256) {
 	sto.DownloadableFiles.Lock.Lock()
 	defer sto.DownloadableFiles.Lock.Unlock()
-	sto.DownloadableFiles.Downloadable[metahash] = filename
+	sto.DownloadableFiles.Downloadable[fmt.Sprint(metahash)] = filename
 }
 
 func (sto *UIStorage) RemoveDownloadableFile(metahash utils.SHA256) {
 	sto.DownloadableFiles.Lock.Lock()
 	defer sto.DownloadableFiles.Lock.Unlock()
-	delete(sto.DownloadableFiles.Downloadable, metahash)
+	delete(sto.DownloadableFiles.Downloadable, fmt.Sprint(metahash))
 }

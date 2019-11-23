@@ -71,10 +71,23 @@ $(document).ready(function() {
     });
   }
 
+  function searchResults() {
+    $.getJSON("/searchResults", function(data) {
+      var items = [];
+      $.each(data, function(key, val) {
+        items.push(
+          "<li id='" + key + "' class='searchResultItem'>" + val + "</li>"
+        );
+      });
+      $(".downloadableList").html(items.join(""));
+    });
+  }
+
   function update() {
     fetchMessages();
     getContacts();
     getPeers();
+    searchResults();
   }
 
   setInterval(update, 1000); //fetch messages every second

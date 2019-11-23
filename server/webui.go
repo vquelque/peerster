@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/vquelque/Peerster/gossiper"
 	"github.com/vquelque/Peerster/message"
@@ -74,7 +75,7 @@ func msgHandler(gsp *gossiper.Gossiper) http.HandlerFunc {
 			}
 			messageText := r.FormValue("message")
 			cliMsg := &message.Message{Text: messageText}
-			gsp.ProcessClientMessage(cliMsg)
+			go gsp.ProcessClientMessage(cliMsg)
 		default:
 			fmt.Fprintf(w, "Sorry, only GET and POST methods are supported.")
 		}
@@ -134,7 +135,7 @@ func privateMsgHandler(gsp *gossiper.Gossiper) http.HandlerFunc {
 			peer := r.FormValue("peer")
 			messageText := r.FormValue("message")
 			cliMsg := &message.Message{Text: messageText, Destination: peer}
-			gsp.ProcessClientMessage(cliMsg)
+			go gsp.ProcessClientMessage(cliMsg)
 			http.Redirect(w, r, r.Header.Get("/privateMsg?peer="+peer), 302)
 		default:
 			fmt.Fprintf(w, "Sorry, only GET and POST methods are supported.")
@@ -153,7 +154,7 @@ func fileUploadHandler(gsp *gossiper.Gossiper) http.HandlerFunc {
 				//checking whether any error occurred retrieving image
 			}
 			cliMsg := &message.Message{File: filename}
-			gsp.ProcessClientMessage(cliMsg)
+			go gsp.ProcessClientMessage(cliMsg)
 			http.Redirect(w, r, r.Header.Get("/"), 302)
 		}
 	})
@@ -181,6 +182,7 @@ func fileDownloadHandler(gsp *gossiper.Gossiper) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "POST":
+			http.Redirect(w, r, r.Header.Get("/"), 302)
 			if err := r.ParseForm(); err != nil {
 				http.Error(w, "Invalid Data", http.StatusBadRequest)
 				return
@@ -195,8 +197,47 @@ func fileDownloadHandler(gsp *gossiper.Gossiper) http.HandlerFunc {
 				return
 			}
 			cliMsg := &message.Message{File: filename, Destination: peer, Request: metahash}
-			gsp.ProcessClientMessage(cliMsg)
+			go gsp.ProcessClientMessage(cliMsg)
+		}
+	})
+}
+
+func fileSearchHandler(gsp *gossiper.Gossiper) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "POST":
+			if err := r.ParseForm(); err != nil {
+				http.Error(w, "Invalid Data", http.StatusBadRequest)
+				return
+			}
+			keywordStr := r.FormValue("keywords")
+			budget, err := strconv.ParseUint(r.FormValue("budget"), 10, 64)
+			if err != nil || len(keywordStr) <= 0 {
+				return
+			}
+			keywords := strings.Split(keywordStr, ",")
+			cliMsg := &message.Message{Keywords: keywords, Budget: budget}
+			go gsp.ProcessClientMessage(cliMsg)
 			http.Redirect(w, r, r.Header.Get("/"), 302)
+		}
+	})
+}
+
+func searchResultsHandler(gsp *gossiper.Gossiper) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "GET":
+			gsp.UIStorage.DownloadableFiles.Lock.RLock()
+			dFiles := gsp.UIStorage.DownloadableFiles.Downloadable
+			filesJSON, err := json.Marshal(dFiles)
+			gsp.UIStorage.DownloadableFiles.Lock.RUnlock()
+			if err != nil {
+				fmt.Printf("ERROR PARSING FILE MAP")
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			w.Write(filesJSON)
 		}
 	})
 }
@@ -214,6 +255,8 @@ func StartUIServer(UIPort int, gsp *gossiper.Gossiper) *http.Server {
 	mux.HandleFunc("/privateMsg", privateMsgHandler(gsp))
 	mux.HandleFunc("/uploadFile", fileUploadHandler(gsp))
 	mux.HandleFunc("/downloadFile", fileDownloadHandler(gsp))
+	mux.HandleFunc("/searchFile", fileSearchHandler(gsp))
+	mux.HandleFunc("/searchResults", searchResultsHandler(gsp))
 	server := &http.Server{Addr: UIPortStr, Handler: mux}
 	go func() {
 		if err := server.ListenAndServe(); err != nil {

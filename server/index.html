@@ -13,7 +13,6 @@
     <div class="content">
       <div class="row">
         <div class="column">
-
           <div id="chatWrapper">
             <div id="menu">
               <p class="welcome">Welcome <span id="peerID"></span> !</p>
@@ -26,13 +25,13 @@
 
             <form id="chat">
               <input name="message" type="text" id="message" size="63" />
-              <input type="button" id="send" value="Send !"></button>
+              <input type="button" id="send" value="Send !" />
             </form>
           </div>
 
           <div id="fileUploadWrapper">
-              <h2>Upload a file :</h2>
-              <form
+            <h2>Upload a file :</h2>
+            <form
               enctype="multipart/form-data"
               action="/uploadFile"
               method="post"
@@ -41,7 +40,6 @@
               <input type="submit" value="upload" />
             </form>
           </div>
-
         </div>
         <div class="column">
           <div id="peerWrapper">
@@ -76,17 +74,28 @@
           </div>
 
           <div id="fileDownloadWrapper">
-            <h2>Dowload a file :</h2>
-            <form
-            action="/downloadFile"
-            method="post"
-          >
-            <input type="text" placeholder="metahash" name="metahash" />
-            <input type="text" placeholder="filename" name="filename" />
-            <select name="peer" class="fileRequestPeer"> </select>
-            <input type="submit" value="Request file" />
-          </form>
-        </div>
+            <h2>Download a file :</h2>
+            <form action="/downloadFile" method="post">
+              <input type="text" placeholder="metahash" name="metahash" />
+              <input type="text" placeholder="filename" name="filename" />
+              <select name="peer" class="fileRequestPeer"> </select>
+              <input type="submit" value="Request file" />
+            </form>
+          </div>
+
+          <div id="fileSearchWrapper">
+            <h2>Search for a file :</h2>
+            <form action="/searchFile" method="post">
+              <input type="text" placeholder="keywords" name="keywords" />
+              <input type="number" placeholder="budget" name="budget" />
+              <input type="submit" value="Search !" />
+            </form>
+          </div>
+
+          <div id="searchResultWrapper">
+            <h2>Search Result :</h2>
+            <div class="downloadable"><ul class="downloadableList"></ul></div>
+          </div>
         </div>
       </div>
     </div>

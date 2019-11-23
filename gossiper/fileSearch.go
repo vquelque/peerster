@@ -63,7 +63,12 @@ func (gsp *Gossiper) processSearchReply(r *message.SearchReply) {
 func (gsp *Gossiper) sendSearchReply(r *message.SearchReply) {
 	r.HopLimit = r.HopLimit - 1
 	gp := &GossipPacket{SearchReply: r}
-	nextHopAddr := gsp.Routing.GetRoute(r.Destination)
+	var nextHopAddr string
+	if r.Destination == gsp.Name {
+		nextHopAddr = gsp.PeersSocket.Address()
+	} else {
+		nextHopAddr = gsp.Routing.GetRoute(r.Destination)
+	}
 	fmt.Printf("SENDING SEARCH REPLY TO DEST %s VIA %s \n", r.Destination, nextHopAddr)
 	if nextHopAddr != "" {
 		gsp.send(gp, nextHopAddr)
