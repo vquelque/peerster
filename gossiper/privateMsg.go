@@ -17,7 +17,9 @@ func (gsp *Gossiper) processPrivateMessage(msg *message.PrivateMessage) {
 	// this private message is for us
 	gsp.PrivateStorage.Store(msg, msg.Origin)
 	gsp.UIStorage.StorePrivateMsgAsync(msg, msg.Origin)
-	fmt.Println(msg.String())
+	if msg.Text != "" {
+		fmt.Println(msg.String())
+	}
 }
 
 // sendPrivateMessage sends private Message to dest and decrements hop limit
@@ -27,11 +29,14 @@ func (gsp *Gossiper) sendPrivateMessage(msg *message.PrivateMessage) {
 	nextHopAddr := gsp.Routing.GetRoute(msg.Destination)
 	// println("sending private message to " + msg.Destination + " via " + nextHopAddr)
 	if nextHopAddr != "" {
-		if msg.Origin == gsp.Name {
+		if msg.Origin == gsp.Name && msg.Text != "" {
 			// we are the origin of this message --> store it to retrieve it in conversation
+			// store only if txt is not empty otherwise it is just a TLCAck
 			gsp.PrivateStorage.Store(msg, msg.Destination)
 			gsp.UIStorage.StorePrivateMsgAsync(msg, msg.Destination)
 		}
-		gsp.send(gp, nextHopAddr)
+		if msg.HopLimit > 0 {
+			gsp.send(gp, nextHopAddr)
+		}
 	}
 }

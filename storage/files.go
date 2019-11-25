@@ -15,6 +15,7 @@ type File struct {
 	MetafileHash utils.SHA256
 	ChunkCount   uint64
 	Completed    bool
+	Size         int64
 }
 
 type Metafile []byte

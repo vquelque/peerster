@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/vquelque/Peerster/blockchain"
 	"github.com/vquelque/Peerster/message"
 	"github.com/vquelque/Peerster/utils"
 	"github.com/vquelque/Peerster/vector"
@@ -25,6 +26,11 @@ type FileObserver struct {
 type SearchObserver struct {
 	waitingForReply map[*message.SearchRequest]chan *message.SearchReply
 	lock            sync.RWMutex
+}
+
+type TLCAckObserver struct {
+	waitingForAck map[string]chan blockchain.TLCAck
+	lock          sync.RWMutex
 }
 
 func Init() *Observer {
@@ -133,4 +139,50 @@ func (obs *SearchObserver) SendMatchToSearchObserver(r *message.SearchReply, key
 			}
 		}
 	}
+}
+
+func InitTLCAckObserver() *TLCAckObserver {
+	return &TLCAckObserver{waitingForAck: make(map[string]chan blockchain.TLCAck)}
+}
+
+func (obs *TLCAckObserver) RegisterTLCAckObserver(tlcmsg *blockchain.TLCMessage) chan blockchain.TLCAck {
+	obs.lock.Lock()
+	defer obs.lock.Unlock()
+	ch := make(chan blockchain.TLCAck)
+	obs.waitingForAck[TLCAckObserverIdentifier(tlcmsg)] = ch
+	return ch
+}
+func (obs *TLCAckObserver) AddObserverForID(tlcmsg *blockchain.TLCMessage, ch chan blockchain.TLCAck) {
+	obs.lock.Lock()
+	defer obs.lock.Unlock()
+	obs.waitingForAck[TLCAckObserverIdentifier(tlcmsg)] = ch
+}
+
+func (obs *TLCAckObserver) UnregisterTLCAckObservers(tlcmsg *blockchain.TLCMessage) {
+	obs.lock.Lock()
+	defer obs.lock.Unlock()
+	id := TLCAckObserverIdentifier(tlcmsg)
+	ackChan, found := obs.waitingForAck[id]
+	if found && ackChan != nil {
+		close(ackChan)
+		delete(obs.waitingForAck, id)
+	}
+}
+
+func (obs *TLCAckObserver) SendTLCToAckObserver(r blockchain.TLCAck) {
+	obs.lock.RLock()
+	defer obs.lock.RUnlock()
+	id := fmt.Sprintf("%s:%d", r.Destination, r.ID)
+	ackChan, found := obs.waitingForAck[id]
+	if found && ackChan != nil {
+		ackChan <- r
+	}
+}
+
+func TLCAckObserverIdentifier(tlcmsg *blockchain.TLCMessage) string {
+	return fmt.Sprintf("%s:%d", tlcmsg.Origin, tlcmsg.ID)
+}
+
+func tlcAckObserverIdentifierForID(tlcmsg *blockchain.TLCMessage, id uint32) string {
+	return fmt.Sprintf("%s:%d", tlcmsg.Origin, id)
 }

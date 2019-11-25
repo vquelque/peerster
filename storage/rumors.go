@@ -49,6 +49,7 @@ func (storage *RumorStorage) Get(peer string, ID uint32) *message.RumorMessage {
 	}
 	return archive[ID-1]
 }
+
 func (storage *RumorStorage) GetAllForPeer(peer string) []*message.RumorMessage {
 	storage.lock.RLock()
 	defer storage.lock.RUnlock()

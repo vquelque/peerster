@@ -30,6 +30,7 @@ func (gsp *Gossiper) processFile(filename string) {
 	buffer := make([]byte, constant.ChunkSize)
 	metafile := make([]byte, 0)
 	var count uint64 = 0
+	var size int64 = 0
 
 	for {
 		//for each chunk of 8KB
@@ -44,6 +45,7 @@ func (gsp *Gossiper) processFile(filename string) {
 			break
 		}
 		count++
+		size = size + int64(bytesread)
 		hash := sha256.Sum256(buffer[:bytesread])
 		metafile = append(metafile, hash[:]...)
 		data := make([]byte, bytesread)
@@ -53,10 +55,13 @@ func (gsp *Gossiper) processFile(filename string) {
 		// fmt.Printf("CHUNK %d STORED. HASH %x. \n", count, hash)
 	}
 	metaHash := sha256.Sum256(metafile)
-	f := &storage.File{Name: filename, MetafileHash: metaHash, ChunkCount: count}
+	f := &storage.File{Name: filename, MetafileHash: metaHash, ChunkCount: count, Size: size}
 	gsp.FileStorage.StoreFile(f, metafile)
 	fmt.Printf("File stored in memory. Metahash : %x\n", metaHash)
-	// fmt.Printf("METAFILE CONTENT : %x\n", gsp.FileStorage.GetMetafile(f.MetafileHash))
+	//register name on blockchain
+	if gsp.Hw3ex2.hw3ex2 {
+		gsp.PublishName(f)
+	}
 }
 
 func (gsp *Gossiper) startFileDownload(metahash utils.SHA256, peer string, filename string, chunkSources map[uint64]string) {

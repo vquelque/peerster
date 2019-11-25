@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/dedis/protobuf"
+	"github.com/vquelque/Peerster/blockchain"
 	"github.com/vquelque/Peerster/constant"
 	"github.com/vquelque/Peerster/message"
 	"github.com/vquelque/Peerster/observer"
@@ -39,6 +40,11 @@ type Gossiper struct {
 	PendingSearchRequest  *storage.PendingRequests
 	SearchResults         *storage.SearchResults
 	ToDownload            *storage.ToDownload
+	Blockchain            *blockchain.Blockchain
+	Hw3ex2                *Hw3ex2
+	TLCStorage            *storage.TLCStorage
+	WaitingForTLCAck      *observer.TLCAckObserver
+	HopLimit              uint32
 }
 
 // GossipPacket is the only type of packet sent to other peers.
@@ -51,6 +57,8 @@ type GossipPacket struct {
 	DataReply     *message.DataReply
 	SearchRequest *message.SearchRequest
 	SearchReply   *message.SearchReply
+	TLCMessage    *blockchain.TLCMessage
+	Ack           *blockchain.TLCAck
 }
 
 // Encapsulate received messages from peers/client to put in the queue
@@ -60,7 +68,7 @@ type receivedPackets struct {
 }
 
 // NewGossiper creates and returns a new gossiper running at given address, port with given name.
-func NewGossiper(address string, name string, uiPort int, peersList string, simple bool, antiEntropyTimer int, rtimer int) *Gossiper {
+func NewGossiper(address string, name string, uiPort int, peersList string, simple bool, antiEntropyTimer int, rtimer int, hw3ex2flag bool, peersNumber uint64, stubbornTimeout int, hoplimit uint32) *Gossiper {
 	peersSocket := socket.NewUDPSocket(address)
 	uiSocket := socket.NewUDPSocket(fmt.Sprintf("127.0.0.1:%d", uiPort))
 	peersSet := peers.NewPeersSet(peersList)
@@ -77,6 +85,10 @@ func NewGossiper(address string, name string, uiPort int, peersList string, simp
 	searchResults := storage.NewSearchResult()
 	toDownload := storage.NewToDownload()
 	pendingSearchRequest := storage.NewPendingRequests()
+	blockchain := blockchain.InitBlockchain()
+	hw3ex2 := &Hw3ex2{hw3ex2: hw3ex2flag, PeersNumber: peersNumber, StubbornTimeout: stubbornTimeout}
+	tlcStorage := storage.NewTLCMessageStorage()
+	waitingForTLCAck := observer.InitTLCAckObserver()
 
 	return &Gossiper{
 		Name:                  name,
@@ -100,6 +112,11 @@ func NewGossiper(address string, name string, uiPort int, peersList string, simp
 		SearchResults:         searchResults,
 		ToDownload:            toDownload,
 		PendingSearchRequest:  pendingSearchRequest,
+		Blockchain:            blockchain,
+		Hw3ex2:                hw3ex2,
+		TLCStorage:            tlcStorage,
+		WaitingForTLCAck:      waitingForTLCAck,
+		HopLimit:              hoplimit,
 	}
 }
 
@@ -118,7 +135,9 @@ func (gsp *Gossiper) send(gossipPacket *GossipPacket, addr string) {
 
 func (gsp *Gossiper) broadcastPacket(pkt *GossipPacket, sender string) {
 	for _, peer := range gsp.Peers.GetAllPeers() {
-		gsp.send(pkt, peer)
+		if peer != sender {
+			gsp.send(pkt, peer)
+		}
 	}
 }
 
@@ -216,6 +235,10 @@ func (gsp *Gossiper) processMessages(peerMsgs <-chan *receivedPackets, clientMsg
 				go gsp.processSearchRequest(gp.SearchRequest)
 			case gp.SearchReply != nil:
 				go gsp.processSearchReply(gp.SearchReply)
+			case gp.TLCMessage != nil:
+				go gsp.processTLCMessage(gp.TLCMessage, peerMsg.sender)
+			case gp.Ack != nil:
+				go gsp.processTLCAck(*gp.Ack)
 			}
 		case cliMsg := <-clientMsgs:
 			msg := &message.Message{}
