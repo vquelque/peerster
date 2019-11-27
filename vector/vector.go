@@ -20,12 +20,14 @@ type StatusPacket struct {
 // We use ID for messages starting at 0
 type Vector struct {
 	nextMessage map[string]uint32
+	nextRumor   map[string]uint32
+	nextTLC     map[string]uint32
 	peersLock   sync.RWMutex
 }
 
 // NewVector returns a new empty vector clocl
 func NewVector() *Vector {
-	vec := &Vector{nextMessage: make(map[string]uint32), peersLock: sync.RWMutex{}}
+	vec := &Vector{nextMessage: make(map[string]uint32), nextRumor: make(map[string]uint32), nextTLC: make(map[string]uint32)}
 	return vec
 }
 
@@ -40,17 +42,91 @@ func (vec *Vector) NextMessageForPeer(peer string) uint32 {
 	return vec.nextMessage[peer]
 }
 
+func (vec *Vector) NextRumorForPeer(peer string) uint32 {
+	vec.peersLock.Lock()
+	defer vec.peersLock.Unlock()
+	_, found := vec.nextRumor[peer]
+	if !found {
+		vec.nextRumor[peer] = 1
+	}
+	return vec.nextRumor[peer]
+}
+
+func (vec *Vector) NextTLCForPeer(peer string) uint32 {
+	vec.peersLock.Lock()
+	defer vec.peersLock.Unlock()
+	_, found := vec.nextTLC[peer]
+	if !found {
+		vec.nextTLC[peer] = 1
+	}
+	return vec.nextTLC[peer]
+}
+
 // Increments message ID for the given peer. returns old value
-func (vec *Vector) IncrementMIDForPeer(peer string) uint32 {
+func (vec *Vector) IncrementMIDForPeer(origin string, rumor bool) uint32 {
 	vec.peersLock.Lock()
 	defer vec.peersLock.Unlock()
 	var val uint32
-	val, found := vec.nextMessage[peer]
+	val, found := vec.nextMessage[origin]
 	if !found {
 		val = 0
-		vec.nextMessage[peer] = 1
+		vec.nextMessage[origin] = 1
 	}
-	vec.nextMessage[peer]++
+	vec.nextMessage[origin]++
+	switch rumor {
+	case true:
+		vec.incrementRumorIDForPeer(origin)
+	case false:
+		vec.incrementTLCIDForPeer(origin)
+	}
+	return val
+}
+
+func (vec *Vector) incrementRumorIDForPeer(peer string) uint32 {
+	var val uint32
+	val, found := vec.nextRumor[peer]
+	if !found {
+		val = 0
+		vec.nextRumor[peer] = 1
+	}
+	vec.nextRumor[peer]++
+	return val
+}
+
+func (vec *Vector) IncrementRumorIDForPeer(peer string) uint32 {
+	vec.peersLock.Lock()
+	defer vec.peersLock.Unlock()
+	var val uint32
+	val, found := vec.nextRumor[peer]
+	if !found {
+		val = 0
+		vec.nextRumor[peer] = 1
+	}
+	vec.nextRumor[peer]++
+	return val
+}
+
+func (vec *Vector) incrementTLCIDForPeer(peer string) uint32 {
+	var val uint32
+	val, found := vec.nextTLC[peer]
+	if !found {
+		val = 0
+		vec.nextTLC[peer] = 1
+	}
+	vec.nextTLC[peer]++
+	return val
+}
+
+func (vec *Vector) IncrementTLCIDForPeer(peer string) uint32 {
+	vec.peersLock.Lock()
+	defer vec.peersLock.Unlock()
+	var val uint32
+	val, found := vec.nextTLC[peer]
+	if !found {
+		val = 0
+		vec.nextTLC[peer] = 1
+	}
+	vec.nextTLC[peer]++
 	return val
 }
 

@@ -33,7 +33,7 @@ func (gsp *Gossiper) ProcessClientMessage(msg *message.Message) {
 			gsp.startSearchRequest(msg.Keywords, msg.Budget)
 		} else {
 			//rumor message
-			mID := gsp.VectorClock.NextMessageForPeer(gsp.Name)
+			mID := gsp.VectorClock.NextRumorForPeer(gsp.Name)
 			m := message.NewRumorMessage(gsp.Name, mID, msg.Text)
 			gsp.processRumorMessage(m, "")
 		}

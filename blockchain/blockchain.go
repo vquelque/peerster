@@ -21,7 +21,7 @@ type PendingTLC struct {
 type Blockchain struct {
 	Blocks     *Blocks
 	PendingTLC *PendingTLC
-	ID         uint32 //own rumor id use atomic function to increment/get !
+	my_time    uint32 //own TLC round id use atomic function to increment/get !
 }
 
 func InitBlockchain() *Blockchain {

@@ -12,7 +12,7 @@ import (
 
 // Procecces incoming rumor message/TLC packet.
 func (gsp *Gossiper) processRumorMessage(msg *message.RumorMessage, sender string) {
-	next := gsp.VectorClock.NextMessageForPeer(msg.Origin)
+	next := gsp.VectorClock.NextRumorForPeer(msg.Origin)
 	if sender != "" && msg.ID >= next && msg.Origin != gsp.Name {
 		gsp.Routing.UpdateRoute(msg, sender) //update routing table
 		if msg.Text != "" {
@@ -28,15 +28,14 @@ func (gsp *Gossiper) processRumorPacket(pkt *message.RumorPacket, sender string)
 
 	origin, id, rumor := pkt.GetDetails()
 	//store rumor packet
-	next := gsp.VectorClock.NextMessageForPeer(origin)
 
-	if next == id {
+	if gsp.isValid(pkt) {
 		if sender != "" {
 			fmt.Println(pkt.String(origin))
 		}
 		// we were waiting for this message
 		// increase mID for peer and store message
-		gsp.VectorClock.IncrementMIDForPeer(origin)
+		gsp.VectorClock.IncrementMIDForPeer(origin, rumor)
 		gsp.RumorStorage.Store(pkt)
 		//pick random peer and rumormonger
 		randPeer := gsp.Peers.PickRandomPeer(sender)
@@ -49,7 +48,7 @@ func (gsp *Gossiper) processRumorPacket(pkt *message.RumorPacket, sender string)
 		}
 	}
 
-	if !rumor && id <= next {
+	if !rumor && id <= gsp.VectorClock.NextTLCForPeer(origin) {
 		//TLC Packet
 		fmt.Println(gsp.Blockchain.IsPending(pkt.TLCMessage))
 		if gsp.Blockchain.IsPending(pkt.TLCMessage) && pkt.TLCMessage.Confirmed {
@@ -151,5 +150,16 @@ func (gsp *Gossiper) synchronizeWithPeer(same bool, toAsk []vector.PeerStatus, t
 		// send status for triggering peer mongering
 		//fmt.Println(toAsk)
 		gsp.sendStatusPacket(peerAddr)
+	}
+}
+
+func (gsp *Gossiper) isValid(pkt *message.RumorPacket) bool {
+	switch {
+	case pkt.RumorMessage != nil:
+		return gsp.VectorClock.NextRumorForPeer(pkt.RumorMessage.Origin) == pkt.RumorMessage.ID
+	case pkt.TLCMessage != nil:
+		return gsp.VectorClock.NextTLCForPeer(pkt.TLCMessage.Origin) == pkt.TLCMessage.ID
+	default:
+		return false
 	}
 }

@@ -29,7 +29,7 @@ func NewRumorStorage() *RumorStorage {
 func (storage *RumorStorage) Store(pkt *message.RumorPacket) {
 	storage.lock.Lock()
 	defer storage.lock.Unlock()
-	origin,id,_ := pkt.GetDetails()
+	origin, id, _ := pkt.GetDetails()
 	archive := storage.rumors[origin]
 	if id == uint32(len(archive)+1) {
 		// it is the good rumor pkt

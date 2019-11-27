@@ -11,16 +11,10 @@ import (
 	"github.com/vquelque/Peerster/storage"
 )
 
-type Hw3ex2 struct {
-	hw3ex2          bool
-	PeersNumber     uint64
-	StubbornTimeout int
-}
-
 func (gsp *Gossiper) PublishName(file *storage.File) {
 	fmt.Printf("PUBLISHING NAME %s ON BLOCKCHAIN\n", file.Name)
 	bp := blockchain.NewBlockPublish(file.Name, file.Size, file.MetafileHash)
-	nextID := gsp.VectorClock.NextMessageForPeer(gsp.Name)
+	nextID := gsp.VectorClock.NextTLCForPeer(gsp.Name)
 	TLC := message.NewTLCMessage(gsp.Name, nextID, bp, false)
 	validTx := gsp.Blockchain.AddPendingTLCIfValid(TLC)
 	if !validTx {
@@ -29,11 +23,11 @@ func (gsp *Gossiper) PublishName(file *storage.File) {
 	}
 	channel := gsp.WaitingForTLCAck.RegisterTLCAckObserver(TLC)
 	var timer *time.Ticker
-	if gsp.Hw3ex2.StubbornTimeout > 0 {
-		stubbornTimeoutDuration := time.Duration(gsp.Hw3ex2.StubbornTimeout) * time.Second
+	if gsp.AdditionalFlags.StubbornTimeout > 0 {
+		stubbornTimeoutDuration := time.Duration(gsp.AdditionalFlags.StubbornTimeout) * time.Second
 		timer = time.NewTicker(stubbornTimeoutDuration)
 	}
-	majority := gsp.Hw3ex2.PeersNumber / 2
+	majority := gsp.AdditionalFlags.PeersNumber / 2
 	acknowledged := []string{gsp.Name}
 	gsp.mongerTLC(TLC, "")
 	defer func() {
@@ -47,7 +41,7 @@ func (gsp *Gossiper) PublishName(file *storage.File) {
 			//RUMORMONGER AGAIN
 			fmt.Printf("MONGERING AGAIN TLC. STUBBORDN TIMEOUT EXCEEDED. \n")
 			gsp.WaitingForTLCAck.UnregisterTLCAckObservers(TLC)
-			nextID := gsp.VectorClock.NextMessageForPeer(gsp.Name)
+			nextID := gsp.VectorClock.NextTLCForPeer(gsp.Name)
 			acknowledged = []string{gsp.Name} //reset ack for this TLC
 			TLC = message.NewTLCMessage(gsp.Name, nextID, bp, false)
 			channel = gsp.WaitingForTLCAck.RegisterTLCAckObserver(TLC)

@@ -14,6 +14,7 @@ import (
 	"github.com/vquelque/Peerster/routing"
 	"github.com/vquelque/Peerster/socket"
 	"github.com/vquelque/Peerster/storage"
+	"github.com/vquelque/Peerster/utils"
 	"github.com/vquelque/Peerster/vector"
 )
 
@@ -41,7 +42,7 @@ type Gossiper struct {
 	SearchResults         *storage.SearchResults
 	ToDownload            *storage.ToDownload
 	Blockchain            *blockchain.Blockchain
-	Hw3ex2                *Hw3ex2
+	AdditionalFlags       *utils.AdditionalFlags
 	TLCStorage            *storage.TLCStorage
 	WaitingForTLCAck      *observer.TLCAckObserver
 	HopLimit              uint32
@@ -68,7 +69,7 @@ type receivedPackets struct {
 }
 
 // NewGossiper creates and returns a new gossiper running at given address, port with given name.
-func NewGossiper(address string, name string, uiPort int, peersList string, simple bool, antiEntropyTimer int, rtimer int, hw3ex2flag bool, peersNumber uint64, stubbornTimeout int, hoplimit uint32) *Gossiper {
+func NewGossiper(address string, name string, uiPort int, peersList string, simple bool, antiEntropyTimer int, rtimer int, hoplimit uint32, additionalFlags *utils.AdditionalFlags) *Gossiper {
 	peersSocket := socket.NewUDPSocket(address)
 	uiSocket := socket.NewUDPSocket(fmt.Sprintf("127.0.0.1:%d", uiPort))
 	peersSet := peers.NewPeersSet(peersList)
@@ -86,7 +87,6 @@ func NewGossiper(address string, name string, uiPort int, peersList string, simp
 	toDownload := storage.NewToDownload()
 	pendingSearchRequest := storage.NewPendingRequests()
 	blockchain := blockchain.InitBlockchain()
-	hw3ex2 := &Hw3ex2{hw3ex2: hw3ex2flag, PeersNumber: peersNumber, StubbornTimeout: stubbornTimeout}
 	tlcStorage := storage.NewTLCMessageStorage()
 	waitingForTLCAck := observer.InitTLCAckObserver()
 
@@ -113,7 +113,7 @@ func NewGossiper(address string, name string, uiPort int, peersList string, simp
 		ToDownload:            toDownload,
 		PendingSearchRequest:  pendingSearchRequest,
 		Blockchain:            blockchain,
-		Hw3ex2:                hw3ex2,
+		AdditionalFlags:       additionalFlags,
 		TLCStorage:            tlcStorage,
 		WaitingForTLCAck:      waitingForTLCAck,
 		HopLimit:              hoplimit,
@@ -182,7 +182,7 @@ func (gsp *Gossiper) startRoutingMessageHandler() {
 }
 
 func (gsp *Gossiper) sendRouteRumor(peer string) {
-	rID := gsp.VectorClock.NextMessageForPeer(gsp.Name)
+	rID := gsp.VectorClock.NextRumorForPeer(gsp.Name)
 	r := message.NewRouteRumorMessage(gsp.Name, rID)
 	gsp.processRumorMessage(r, "")
 }
