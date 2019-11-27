@@ -1,21 +1,23 @@
 package storage
 
-import "github.com/vquelque/Peerster/blockchain"
+import (
+	"sync"
 
-import "sync"
+	"github.com/vquelque/Peerster/message"
+)
 
 type TLCStorage struct {
-	TLCMessages map[string][]*blockchain.TLCMessage
+	TLCMessages map[string][]*message.TLCMessage
 	lock        *sync.RWMutex
 }
 
 func NewTLCMessageStorage() *TLCStorage {
 	st := &TLCStorage{
-		TLCMessages: make(map[string][]*blockchain.TLCMessage)}
+		TLCMessages: make(map[string][]*message.TLCMessage)}
 	return st
 }
 
-func (storage *TLCStorage) Store(tlcmsg *blockchain.TLCMessage) {
+func (storage *TLCStorage) Store(tlcmsg *message.TLCMessage) {
 	storage.lock.Lock()
 	defer storage.lock.Unlock()
 	origin := tlcmsg.Origin
@@ -27,7 +29,7 @@ func (storage *TLCStorage) Store(tlcmsg *blockchain.TLCMessage) {
 	}
 }
 
-func (storage *TLCStorage) Get(peer string, ID uint32) *blockchain.TLCMessage {
+func (storage *TLCStorage) Get(peer string, ID uint32) *message.TLCMessage {
 	storage.lock.RLock()
 	defer storage.lock.RUnlock()
 	archive, found := storage.TLCMessages[peer]

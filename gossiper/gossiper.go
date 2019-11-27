@@ -57,8 +57,8 @@ type GossipPacket struct {
 	DataReply     *message.DataReply
 	SearchRequest *message.SearchRequest
 	SearchReply   *message.SearchReply
-	TLCMessage    *blockchain.TLCMessage
-	Ack           *blockchain.TLCAck
+	TLCMessage    *message.TLCMessage
+	Ack           *message.TLCAck
 }
 
 // Encapsulate received messages from peers/client to put in the queue

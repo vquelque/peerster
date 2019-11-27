@@ -1,46 +1,22 @@
 package blockchain
 
 import (
-	"crypto/sha256"
 	"sync"
 
 	"github.com/vquelque/Peerster/message"
 	"github.com/vquelque/Peerster/utils"
-	"github.com/vquelque/Peerster/vector"
 )
 
-type TxPublish struct {
-	Name        string
-	Size        int64 // Size in bytes
-	MetafileHah []byte
-}
-
-type BlockPublish struct {
-	PrevHash    [32]byte //0 for ex3
-	Transaction TxPublish
-}
-
 type Blocks struct {
-	Blocks map[utils.SHA256]*BlockPublish
+	Blocks map[utils.SHA256]*message.BlockPublish
 	Lock   sync.RWMutex
 }
 
 type PendingTLC struct {
-	PendingTLC    map[utils.SHA256]*TLCMessage
+	PendingTLC    map[utils.SHA256]*message.TLCMessage
 	lastSeenTLCID map[string]uint32 //last tlc id for peer
 	Lock          sync.RWMutex
 }
-
-type TLCMessage struct {
-	Origin      string
-	ID          uint32
-	Confirmed   bool
-	TxBlock     BlockPublish
-	VectorClock *vector.StatusPacket
-	Fitness     float32
-}
-
-type TLCAck *message.PrivateMessage
 
 type Blockchain struct {
 	Blocks     *Blocks
@@ -49,30 +25,21 @@ type Blockchain struct {
 }
 
 func InitBlockchain() *Blockchain {
-	blck := &Blocks{Blocks: make(map[utils.SHA256]*BlockPublish)}
-	pTLC := &PendingTLC{PendingTLC: make(map[utils.SHA256]*TLCMessage), lastSeenTLCID: make(map[string]uint32)}
+	blck := &Blocks{Blocks: make(map[utils.SHA256]*message.BlockPublish)}
+	pTLC := &PendingTLC{PendingTLC: make(map[utils.SHA256]*message.TLCMessage), lastSeenTLCID: make(map[string]uint32)}
 	return &Blockchain{Blocks: blck, PendingTLC: pTLC}
 }
 
-func NewBlockPublish(filename string, filesize int64, metahash utils.SHA256) *BlockPublish {
-	tx := TxPublish{
+func NewBlockPublish(filename string, filesize int64, metahash utils.SHA256) *message.BlockPublish {
+	tx := message.TxPublish{
 		Name:        filename,
 		Size:        filesize,
 		MetafileHah: metahash[:],
 	}
-	return &BlockPublish{Transaction: tx}
+	return &message.BlockPublish{Transaction: tx}
 }
 
-func NewTLCMessage(origin string, id uint32, txBlock *BlockPublish, confirmed bool) *TLCMessage {
-	return &TLCMessage{
-		Origin:    origin,
-		ID:        id,
-		Confirmed: confirmed,
-		TxBlock:   *txBlock,
-	}
-}
-
-func NewTLCAck(origin string, destination string, id uint32, hoplimit uint32) TLCAck {
+func NewTLCAck(origin string, destination string, id uint32, hoplimit uint32) message.TLCAck {
 	return &message.PrivateMessage{
 		Origin:      origin,
 		Destination: destination,
@@ -81,7 +48,7 @@ func NewTLCAck(origin string, destination string, id uint32, hoplimit uint32) TL
 	}
 }
 
-func (b *Blockchain) AddPendingTLCIfValid(tlc *TLCMessage) bool {
+func (b *Blockchain) AddPendingTLCIfValid(tlc *message.TLCMessage) bool {
 	b.Blocks.Lock.RLock()
 	defer b.Blocks.Lock.RUnlock()
 	b.PendingTLC.Lock.Lock()
@@ -93,6 +60,14 @@ func (b *Blockchain) AddPendingTLCIfValid(tlc *TLCMessage) bool {
 	}
 	b.PendingTLC.PendingTLC[hash] = tlc
 	return true
+}
+
+func (b *Blockchain) IsPending(tlc *message.TLCMessage) bool {
+	b.PendingTLC.Lock.RLock()
+	defer b.PendingTLC.Lock.RUnlock()
+	hash := tlc.TxBlock.Transaction.Hash()
+	_, found := b.PendingTLC.PendingTLC[hash]
+	return found
 }
 
 func (b *Blockchain) isValid(hash utils.SHA256) bool {
@@ -111,22 +86,19 @@ func (b *Blockchain) IsValid(hash utils.SHA256) bool {
 	return !exists && !pending
 }
 
-func (b *Blockchain) Accept(tlc *TLCMessage) *BlockPublish {
+func (b *Blockchain) Accept(tlc *message.TLCMessage) *message.BlockPublish {
 	b.Blocks.Lock.Lock()
 	defer b.Blocks.Lock.Unlock()
 	b.PendingTLC.Lock.Lock()
 	defer b.PendingTLC.Lock.Unlock()
 	hash := tlc.TxBlock.Transaction.Hash()
 	b.Blocks.Blocks[hash] = &tlc.TxBlock
-	if _, pending := b.PendingTLC.PendingTLC[hash]; pending {
+	if tlc, pending := b.PendingTLC.PendingTLC[hash]; pending {
+		//for mapping in rumor storage
+		tlc.Confirmed = true
 		delete(b.PendingTLC.PendingTLC, hash)
 	}
 	return b.Blocks.Blocks[hash]
-}
-
-func (tx *TxPublish) Hash() utils.SHA256 {
-	hash := sha256.Sum256([]byte(tx.Name))
-	return hash
 }
 
 func (b *Blockchain) LastSeenTLCID(origin string) uint32 {

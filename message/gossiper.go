@@ -1,10 +1,12 @@
 package message
 
 import (
+	"crypto/sha256"
 	"fmt"
 
 	"github.com/vquelque/Peerster/constant"
 	"github.com/vquelque/Peerster/utils"
+	"github.com/vquelque/Peerster/vector"
 )
 
 // SimpleMessage represents a type of Peerster message containing only text.
@@ -19,6 +21,12 @@ type RumorMessage struct {
 	Origin string
 	ID     uint32
 	Text   string
+}
+
+//Wrapper for RumorMessage/TLCMessage
+type RumorPacket struct {
+	RumorMessage *RumorMessage
+	TLCMessage   *TLCMessage
 }
 
 //PrivateMessage between 2 peers
@@ -64,6 +72,28 @@ type SearchResult struct {
 	ChunkMap     []uint64
 	ChunkCount   uint64
 }
+
+type TxPublish struct {
+	Name        string
+	Size        int64 // Size in bytes
+	MetafileHah []byte
+}
+
+type BlockPublish struct {
+	PrevHash    [32]byte //0 for ex3
+	Transaction TxPublish
+}
+
+type TLCMessage struct {
+	Origin      string
+	ID          uint32
+	Confirmed   bool
+	TxBlock     BlockPublish
+	VectorClock *vector.StatusPacket
+	Fitness     float32
+}
+
+type TLCAck *PrivateMessage
 
 //NewSimpleMessage creates a new simpleMessage.
 func NewSimpleMessage(contents string, originalName string, relayPeerAddr string) *SimpleMessage {
@@ -160,9 +190,19 @@ func NewSearchReply(origin string, destination string, hoplimit uint32, results 
 	return sr
 }
 
+func NewTLCMessage(origin string, id uint32, txBlock *BlockPublish, confirmed bool) *TLCMessage {
+	return &TLCMessage{
+		Origin:    origin,
+		ID:        id,
+		Confirmed: confirmed,
+		TxBlock:   *txBlock,
+	}
+}
+
 //Prints a RumorMessage
-func (msg *RumorMessage) PrintRumor(relay string) string {
-	return fmt.Sprintf("RUMOR origin %s from %s ID %d contents %s", msg.Origin, relay, msg.ID, msg.Text)
+func (msg *RumorMessage) String(relay string) string {
+	var text = msg.Text
+	return fmt.Sprintf("RUMOR origin %s from %s ID %d contents %s", msg.Origin, relay, msg.ID, text)
 }
 
 //Prints simpleMessage.
@@ -175,4 +215,52 @@ func (msg *SimpleMessage) String() string {
 func (msg *PrivateMessage) String() string {
 	return fmt.Sprintf("PRIVATE origin %s hop-limit %d contents %s",
 		msg.Origin, msg.HopLimit, msg.Text)
+}
+
+func (tx *TxPublish) Hash() utils.SHA256 {
+	hash := sha256.Sum256([]byte(tx.Name))
+	return hash
+}
+
+// GetDetails return underlying origin,ID and if rumorPacket is a rumorMsg or a TLCMessage
+func (pkt *RumorPacket) GetDetails() (string, uint32, bool) {
+	var origin string
+	var id uint32
+	var rumorMsg bool
+	switch {
+	case pkt.RumorMessage != nil:
+		origin = pkt.RumorMessage.Origin
+		id = pkt.RumorMessage.ID
+		rumorMsg = true
+	case pkt.TLCMessage != nil:
+		origin = pkt.TLCMessage.Origin
+		id = pkt.TLCMessage.ID
+		rumorMsg = false
+	}
+	return origin, id, rumorMsg
+}
+
+func (tlcmsg *TLCMessage) String(origin string) string {
+	var str string
+	switch tlcmsg.Confirmed {
+	case false:
+		str = fmt.Sprintf("UNCONFIRMED GOSSIP origin %s ID %d file name %s size %d metahash %x",
+			tlcmsg.Origin, tlcmsg.ID, tlcmsg.TxBlock.Transaction.Name, tlcmsg.TxBlock.Transaction.Size, tlcmsg.TxBlock.Transaction.MetafileHah)
+	case true:
+		str = fmt.Sprintf("CONFIRMED GOSSIP origin %s ID %d file name %s size %d metahash %x",
+			tlcmsg.Origin, tlcmsg.ID, tlcmsg.TxBlock.Transaction.Name, tlcmsg.TxBlock.Transaction.Size, tlcmsg.TxBlock.Transaction.MetafileHah)
+
+	}
+	return str
+}
+
+func (pkt *RumorPacket) String(origin string) string {
+	var str string
+	switch {
+	case pkt.RumorMessage != nil:
+		str = pkt.RumorMessage.String(origin)
+	case pkt.TLCMessage != nil:
+		str = pkt.TLCMessage.String(origin)
+	}
+	return str
 }

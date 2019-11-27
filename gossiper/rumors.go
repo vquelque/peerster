@@ -10,16 +10,8 @@ import (
 	"github.com/vquelque/Peerster/vector"
 )
 
-// Procecces incoming rumor message.
+// Procecces incoming rumor message/TLC packet.
 func (gsp *Gossiper) processRumorMessage(msg *message.RumorMessage, sender string) {
-	//if sender is nil then it is a client message
-	if sender != "" {
-		if msg.Origin != gsp.Name {
-			fmt.Println(msg.PrintRumor(sender))
-			fmt.Println(gsp.Peers.PrintPeers())
-		}
-	}
-
 	next := gsp.VectorClock.NextMessageForPeer(msg.Origin)
 	if sender != "" && msg.ID >= next && msg.Origin != gsp.Name {
 		gsp.Routing.UpdateRoute(msg, sender) //update routing table
@@ -27,22 +19,45 @@ func (gsp *Gossiper) processRumorMessage(msg *message.RumorMessage, sender strin
 			fmt.Println(gsp.Routing.PrintUpdate(msg.Origin))
 		}
 	}
+	rp := &message.RumorPacket{RumorMessage: msg}
+	gsp.processRumorPacket(rp, sender)
+}
 
-	if next == msg.ID {
+func (gsp *Gossiper) processRumorPacket(pkt *message.RumorPacket, sender string) {
+	//if sender is nil then it is a client message
+
+	origin, id, rumor := pkt.GetDetails()
+	//store rumor packet
+	next := gsp.VectorClock.NextMessageForPeer(origin)
+
+	if next == id {
+		if sender != "" {
+			fmt.Println(pkt.String(origin))
+		}
 		// we were waiting for this message
 		// increase mID for peer and store message
-		gsp.VectorClock.IncrementMIDForPeer(msg.Origin)
-		gsp.RumorStorage.Store(msg)
-		if msg.Text != "" {
-			//not route rumor => append to UI
-			gsp.UIStorage.AppendRumorAsync(msg)
-		}
+		gsp.VectorClock.IncrementMIDForPeer(origin)
+		gsp.RumorStorage.Store(pkt)
 		//pick random peer and rumormonger
 		randPeer := gsp.Peers.PickRandomPeer(sender)
+		if rumor && pkt.RumorMessage.Text != "" {
+			//not route rumor => append to UI
+			gsp.UIStorage.AppendRumorAsync(pkt.RumorMessage)
+		}
 		if randPeer != "" {
-			gsp.rumormonger(msg, randPeer)
-		} else {
-			//	log.Print("No other peers to forward rumor message")
+			gsp.rumormonger(pkt, randPeer)
+		}
+	}
+
+	if !rumor && id <= next {
+		//TLC Packet
+		fmt.Println(gsp.Blockchain.IsPending(pkt.TLCMessage))
+		if gsp.Blockchain.IsPending(pkt.TLCMessage) && pkt.TLCMessage.Confirmed {
+			fmt.Println(pkt.String(origin))
+			randPeer := gsp.Peers.PickRandomPeer(sender)
+			if randPeer != "" {
+				gsp.rumormonger(pkt, randPeer)
+			}
 		}
 	}
 
@@ -50,36 +65,43 @@ func (gsp *Gossiper) processRumorMessage(msg *message.RumorMessage, sender strin
 	if sender != "" {
 		gsp.sendStatusPacket(sender)
 	}
+
 }
 
 // Handle the rumormongering process and launch go routine that listens for ack or timeout.
-func (gsp *Gossiper) rumormonger(rumor *message.RumorMessage, peerAddr string) {
-	go gsp.listenForAck(rumor, peerAddr)
-	gsp.sendRumorMessage(rumor, peerAddr)
-	//fmt.Printf("MONGERING with %s \n", peerAddr)
+func (gsp *Gossiper) rumormonger(rumorPkt *message.RumorPacket, peerAddr string) {
+	go gsp.listenForAck(rumorPkt, peerAddr)
+	switch {
+	case rumorPkt.RumorMessage != nil:
+		gsp.sendRumorMessage(rumorPkt.RumorMessage, peerAddr)
+	case rumorPkt.TLCMessage != nil:
+		gsp.sendTLCMessage(rumorPkt.TLCMessage, peerAddr)
+	}
+	fmt.Printf("MONGERING with %s \n", peerAddr)
 }
 
 // Listen and handle ack or timeout.
-func (gsp *Gossiper) listenForAck(rumor *message.RumorMessage, peerAddr string) {
+func (gsp *Gossiper) listenForAck(pkt *message.RumorPacket, peerAddr string) {
 	// register this channel inside the map of channels waiting for an ack (observer).
-	id := peerAddr + fmt.Sprintf("%s : %d", rumor.Origin, rumor.ID)
-	channel := gsp.WaitingForAck.Register(id)
+	origin, id, _ := pkt.GetDetails()
+	cID := fmt.Sprintf("%s : %s : %d", peerAddr, origin, id)
+	channel := gsp.WaitingForAck.Register(cID)
 	timer := time.NewTicker(constant.AckTimeout * time.Second)
 	defer func() {
 		timer.Stop()
-		gsp.WaitingForAck.Unregister(id)
+		gsp.WaitingForAck.Unregister(cID)
 	}()
 
 	//keep running while channel open with for loop assignment
 	for {
 		select {
 		case <-timer.C:
-			gsp.coinFlip(rumor, peerAddr)
+			gsp.coinFlip(pkt, peerAddr)
 			//	fmt.Printf("TIMEOUT \n")
 			return
 		case ack := <-channel:
 			if ack {
-				gsp.coinFlip(rumor, peerAddr)
+				gsp.coinFlip(pkt, peerAddr)
 			}
 			//	fmt.Printf("GOT ACK \n")
 			return
@@ -93,9 +115,14 @@ func (gsp *Gossiper) sendRumorMessage(msg *message.RumorMessage, peerAddr string
 	gsp.send(&gp, peerAddr)
 }
 
+func (gsp *Gossiper) sendTLCMessage(msg *message.TLCMessage, peerAddr string) {
+	gp := GossipPacket{TLCMessage: msg}
+	gsp.send(&gp, peerAddr)
+}
+
 // CoinFlip tosses a coin. If head, we rumormonger the rumor to a random peer. We exclude the sender
 // from the randomly chosen peer.
-func (gsp *Gossiper) coinFlip(rumor *message.RumorMessage, sender string) {
+func (gsp *Gossiper) coinFlip(rumor *message.RumorPacket, sender string) {
 	head := rand.Int() % 2
 	if head == 0 {
 		// exclude the sender of the rumor from the set where we pick our random peer to prevent a loop.
@@ -116,13 +143,13 @@ func (gsp *Gossiper) synchronizeWithPeer(same bool, toAsk []vector.PeerStatus, t
 	if len(toSend) > 0 {
 		// we have new messages to send to the peer : start mongering
 		//get the rumor we need to send from storage
-		rumorMsg := gsp.RumorStorage.Get(toSend[0].Identifier, toSend[0].NextID)
-		if rumorMsg != nil {
-			gsp.rumormonger(rumorMsg, peerAddr)
+		rumor := gsp.RumorStorage.Get(toSend[0].Identifier, toSend[0].NextID)
+		if rumor != nil {
+			gsp.rumormonger(rumor, peerAddr)
 		}
 	} else if len(toAsk) > 0 {
 		// send status for triggering peer mongering
-		fmt.Println(toAsk)
+		//fmt.Println(toAsk)
 		gsp.sendStatusPacket(peerAddr)
 	}
 }

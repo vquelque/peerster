@@ -40,16 +40,18 @@ func (vec *Vector) NextMessageForPeer(peer string) uint32 {
 	return vec.nextMessage[peer]
 }
 
-// Increments message ID for the given peer.
+// Increments message ID for the given peer. returns old value
 func (vec *Vector) IncrementMIDForPeer(peer string) uint32 {
 	vec.peersLock.Lock()
 	defer vec.peersLock.Unlock()
-	_, found := vec.nextMessage[peer]
+	var val uint32
+	val, found := vec.nextMessage[peer]
 	if !found {
+		val = 0
 		vec.nextMessage[peer] = 1
 	}
 	vec.nextMessage[peer]++
-	return vec.nextMessage[peer]
+	return val
 }
 
 // StatusPacket returns the status packet for a given peer.

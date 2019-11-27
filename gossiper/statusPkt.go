@@ -17,10 +17,8 @@ func (gsp *Gossiper) sendStatusPacket(addr string) {
 // Processes incoming status packets.
 func (gsp *Gossiper) processStatusPacket(sp *vector.StatusPacket, sender string) {
 	fmt.Print(sp.StringStatusWithSender(sender))
-	//	gsp.Peers.Add(sender)
-	//	fmt.Println(gsp.Peers.PrintPeers())
-	//reset anti entropy timer
 
+	//reset anti entropy timer
 	select {
 	case gsp.ResetAntiEntropyTimer <- true:
 	default:
@@ -36,7 +34,6 @@ func (gsp *Gossiper) processStatusPacket(sp *vector.StatusPacket, sender string)
 		//log.Print("OBSERVER FOUND")
 		select {
 		case observerChan <- same:
-			//log.Println("ack sent to chan")
 		default:
 		}
 	}

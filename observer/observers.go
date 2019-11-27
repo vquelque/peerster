@@ -6,7 +6,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/vquelque/Peerster/blockchain"
 	"github.com/vquelque/Peerster/message"
 	"github.com/vquelque/Peerster/utils"
 	"github.com/vquelque/Peerster/vector"
@@ -29,7 +28,7 @@ type SearchObserver struct {
 }
 
 type TLCAckObserver struct {
-	waitingForAck map[string]chan blockchain.TLCAck
+	waitingForAck map[string]chan message.TLCAck
 	lock          sync.RWMutex
 }
 
@@ -51,7 +50,6 @@ func (obs *Observer) Unregister(sender string) {
 	defer obs.lock.Unlock()
 	ackChan, found := obs.waitingForAck[sender]
 	if found && ackChan != nil {
-		close(ackChan)
 		delete(obs.waitingForAck, sender)
 	}
 }
@@ -60,7 +58,7 @@ func (obs *Observer) GetObserver(sp *vector.StatusPacket, peer string) chan bool
 	obs.lock.RLock()
 	defer obs.lock.RUnlock()
 	for _, ps := range sp.Want {
-		id := peer + fmt.Sprintf("%s : %d", ps.Identifier, ps.NextID-1)
+		id := fmt.Sprintf("%s : %s : %d", peer, ps.Identifier, ps.NextID-1)
 		ackChan, found := obs.waitingForAck[id]
 		if found {
 			return ackChan
@@ -142,23 +140,23 @@ func (obs *SearchObserver) SendMatchToSearchObserver(r *message.SearchReply, key
 }
 
 func InitTLCAckObserver() *TLCAckObserver {
-	return &TLCAckObserver{waitingForAck: make(map[string]chan blockchain.TLCAck)}
+	return &TLCAckObserver{waitingForAck: make(map[string]chan message.TLCAck)}
 }
 
-func (obs *TLCAckObserver) RegisterTLCAckObserver(tlcmsg *blockchain.TLCMessage) chan blockchain.TLCAck {
+func (obs *TLCAckObserver) RegisterTLCAckObserver(tlcmsg *message.TLCMessage) chan message.TLCAck {
 	obs.lock.Lock()
 	defer obs.lock.Unlock()
-	ch := make(chan blockchain.TLCAck)
+	ch := make(chan message.TLCAck)
 	obs.waitingForAck[TLCAckObserverIdentifier(tlcmsg)] = ch
 	return ch
 }
-func (obs *TLCAckObserver) AddObserverForID(tlcmsg *blockchain.TLCMessage, ch chan blockchain.TLCAck) {
+func (obs *TLCAckObserver) AddObserverForID(tlcmsg *message.TLCMessage, ch chan message.TLCAck) {
 	obs.lock.Lock()
 	defer obs.lock.Unlock()
 	obs.waitingForAck[TLCAckObserverIdentifier(tlcmsg)] = ch
 }
 
-func (obs *TLCAckObserver) UnregisterTLCAckObservers(tlcmsg *blockchain.TLCMessage) {
+func (obs *TLCAckObserver) UnregisterTLCAckObservers(tlcmsg *message.TLCMessage) {
 	obs.lock.Lock()
 	defer obs.lock.Unlock()
 	id := TLCAckObserverIdentifier(tlcmsg)
@@ -169,7 +167,7 @@ func (obs *TLCAckObserver) UnregisterTLCAckObservers(tlcmsg *blockchain.TLCMessa
 	}
 }
 
-func (obs *TLCAckObserver) SendTLCToAckObserver(r blockchain.TLCAck) {
+func (obs *TLCAckObserver) SendTLCToAckObserver(r message.TLCAck) {
 	obs.lock.RLock()
 	defer obs.lock.RUnlock()
 	id := fmt.Sprintf("%s:%d", r.Destination, r.ID)
@@ -179,10 +177,10 @@ func (obs *TLCAckObserver) SendTLCToAckObserver(r blockchain.TLCAck) {
 	}
 }
 
-func TLCAckObserverIdentifier(tlcmsg *blockchain.TLCMessage) string {
+func TLCAckObserverIdentifier(tlcmsg *message.TLCMessage) string {
 	return fmt.Sprintf("%s:%d", tlcmsg.Origin, tlcmsg.ID)
 }
 
-func tlcAckObserverIdentifierForID(tlcmsg *blockchain.TLCMessage, id uint32) string {
+func tlcAckObserverIdentifierForID(tlcmsg *message.TLCMessage, id uint32) string {
 	return fmt.Sprintf("%s:%d", tlcmsg.Origin, id)
 }
