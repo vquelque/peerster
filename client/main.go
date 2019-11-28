@@ -42,7 +42,7 @@ func main() {
 	} else if *file != "" && *request == "" {
 		// utils.CopyFile(*file, ".")
 		msg.File = *file
-	} else if *request != "" && *file != "" && *destination != "" {
+	} else if *request != "" && *file != "" {
 		data, err := hex.DecodeString(*request)
 		if err != nil {
 			log.Fatal("Unable to decode hex hash)")

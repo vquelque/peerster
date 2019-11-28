@@ -38,10 +38,8 @@ func (pr *PendingRequests) Add(r *message.SearchRequest) {
 func (pr *PendingRequests) Delete(r *message.SearchRequest) {
 	pr.lock.Lock()
 	defer pr.lock.Unlock()
-	_, ok := pr.requests[GetRequestID(r)]
-	if ok {
-		delete(pr.requests, GetRequestID(r))
-	}
+	delete(pr.requests, GetRequestID(r))
+
 }
 
 func (pr *PendingRequests) CheckPendingRequestPresent(r *message.SearchRequest) bool {

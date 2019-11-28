@@ -2,6 +2,7 @@ package gossiper
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/vquelque/Peerster/constant"
@@ -13,7 +14,7 @@ import (
 func (gsp *Gossiper) processSearchRequest(sr *message.SearchRequest) {
 	if gsp.PendingSearchRequest.CheckPendingRequestPresent(sr) {
 		// search request already received -> do not process
-		// fmt.Printf("SR ALREADY REGISTERED \n")
+		fmt.Printf("SR ALREADY REGISTERED \n")
 		return
 	}
 	gsp.registerSearchRequest(sr)
@@ -103,7 +104,7 @@ func (gsp *Gossiper) registerSearchRequest(sr *message.SearchRequest) {
 		select {
 		case <-timer.C:
 			// timer elapsed : unregister search request
-			// log.Printf("UNREGISTERED SR WITH ID %s \n", storage.GetRequestID(sr))
+			log.Printf("UNREGISTERED SR WITH ID %s \n", storage.GetRequestID(sr))
 			gsp.PendingSearchRequest.Delete(sr)
 			timer.Stop()
 		}
@@ -121,7 +122,7 @@ func (gsp *Gossiper) sendSearchRequest(sr *message.SearchRequest, peer string) {
 // search request initiated from this peer
 func (gsp *Gossiper) startSearchRequest(keywords []string, budget uint64) {
 	//TODO CHECK IF WE DO NOT STILL HAVE A PENDING REQUEST FOR THIS KEYWORD ?
-	// log.Printf("STARTING SEARCH REQUEST WITH KEYWORDS %s AND BUDGET %d", keywords, budget)
+	log.Printf("STARTING SEARCH REQUEST WITH KEYWORDS %s AND BUDGET %d", keywords, budget)
 	expandingSearch := false
 	if budget == 0 {
 		expandingSearch = true
@@ -137,10 +138,6 @@ func (gsp *Gossiper) startSearchRequest(keywords []string, budget uint64) {
 	filenames := make(map[utils.SHA256]string) //filename temp
 	defer func() {
 		gsp.WaitingForSearchReply.UnregisterSearchObserver(sr)
-		fmt.Printf("CLEANING SEARCH")
-		for m, _ := range matches {
-			gsp.SearchResults.Clear(m)
-		}
 		timer.Stop()
 	}()
 	for {
@@ -148,7 +145,7 @@ func (gsp *Gossiper) startSearchRequest(keywords []string, budget uint64) {
 		case <-timer.C:
 			timeout++
 			if timeout > constant.SearchRequestMaxRetries {
-				fmt.Printf("REQUEST TIMEOUT")
+				fmt.Printf("REQUEST TIMEOUT \n")
 				return
 			}
 			if expandingSearch {
@@ -161,10 +158,8 @@ func (gsp *Gossiper) startSearchRequest(keywords []string, budget uint64) {
 		case reply := <-match:
 			for _, r := range reply.Results {
 				metahash := utils.SliceToHash(r.MetafileHash)
-				new := gsp.SearchResults.AddSearchResult(r, reply.Origin)
-				if new {
-					fmt.Printf("FOUND match %s at %s metafile=%x chunks=%s \n", r.FileName, reply.Origin, r.MetafileHash, utils.ChunkMapToString(r.ChunkMap))
-				}
+				gsp.SearchResults.AddSearchResult(r, reply.Origin)
+				fmt.Printf("FOUND match %s at %s metafile=%x chunks=%s \n", r.FileName, reply.Origin, r.MetafileHash, utils.ChunkMapToString(r.ChunkMap))
 				_, f := matches[metahash]
 				if !f {
 					matches[metahash] = false
@@ -191,6 +186,7 @@ func (gsp *Gossiper) startSearchRequest(keywords []string, budget uint64) {
 						cMap := gsp.SearchResults.GetChunksSourceMap(m)
 						gsp.ToDownload.AddFileToDownload(m, filenames[m], cMap)
 						gsp.UIStorage.AddDownloadableFile(filenames[m], m)
+					} else if b == false {
 						gsp.SearchResults.Clear(m)
 					}
 				}
@@ -203,5 +199,9 @@ func (gsp *Gossiper) startSearchRequest(keywords []string, budget uint64) {
 func (gsp *Gossiper) StartSearchedFileDownload(metahash utils.SHA256) {
 	filename := gsp.ToDownload.GetFilename(metahash)
 	sources := gsp.ToDownload.GetChunkSources(metahash)
-	gsp.startFileDownload(metahash, sources[0][0], filename, sources)
+	if filename != "" && sources != nil {
+		gsp.startFileDownload(metahash, sources[0][0], filename, sources)
+	} else {
+		fmt.Printf("No peer known for this file \n")
+	}
 }

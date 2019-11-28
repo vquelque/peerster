@@ -57,7 +57,7 @@ func (gsp *Gossiper) processFile(filename string) {
 	metaHash := sha256.Sum256(metafile)
 	f := &storage.File{Name: filename, MetafileHash: metaHash, ChunkCount: count, Size: size}
 	gsp.FileStorage.StoreFile(f, metafile)
-	fmt.Printf("File stored in memory. Metahash : %x\n", metaHash)
+	fmt.Printf("File stored in memory. Name : %s.Metahash : %x\n", f.Name, f.MetafileHash)
 	//register name on blockchain
 	if gsp.AdditionalFlags.HW3ex2 {
 		gsp.PublishName(f)
