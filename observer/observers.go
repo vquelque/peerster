@@ -2,7 +2,6 @@ package observer
 
 import (
 	"fmt"
-	"log"
 	"strings"
 	"sync"
 
@@ -132,7 +131,7 @@ func (obs *SearchObserver) SendMatchToSearchObserver(r *message.SearchReply, key
 		for _, k := range keywords {
 			// log.Printf("KEYWORD : %s. REPLY KEYWORD %s", keywords, keyword)
 			if strings.Contains(keyword, k) {
-				log.Printf("GOT OBSERVER FOR SR with KEYWORD %s", keyword)
+				// log.Printf("GOT OBSERVER FOR SR with KEYWORD %s", keyword)
 				m <- r
 			}
 		}

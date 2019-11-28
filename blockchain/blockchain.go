@@ -2,6 +2,7 @@ package blockchain
 
 import (
 	"sync"
+	"sync/atomic"
 
 	"github.com/vquelque/Peerster/message"
 	"github.com/vquelque/Peerster/utils"
@@ -18,16 +19,23 @@ type PendingTLC struct {
 	Lock          sync.RWMutex
 }
 
+type PendingBlocks struct {
+	PendingBlocks chan *message.BlockPublish
+	Lock          sync.RWMutex
+}
+
 type Blockchain struct {
-	Blocks     *Blocks
-	PendingTLC *PendingTLC
-	my_time    uint32 //own TLC round id use atomic function to increment/get !
+	Blocks        *Blocks
+	PendingTLC    *PendingTLC
+	PendingBlocks *PendingBlocks
+	my_time       uint32
 }
 
 func InitBlockchain() *Blockchain {
 	blck := &Blocks{Blocks: make(map[utils.SHA256]*message.BlockPublish)}
 	pTLC := &PendingTLC{PendingTLC: make(map[utils.SHA256]*message.TLCMessage), lastSeenTLCID: make(map[string]uint32)}
-	return &Blockchain{Blocks: blck, PendingTLC: pTLC}
+	pBlocks := &PendingBlocks{PendingBlocks: make(chan *message.BlockPublish)}
+	return &Blockchain{Blocks: blck, PendingTLC: pTLC, PendingBlocks: pBlocks}
 }
 
 func NewBlockPublish(filename string, filesize int64, metahash utils.SHA256) *message.BlockPublish {
@@ -112,4 +120,24 @@ func (b *Blockchain) SetLastSeenTLCID(origin string, id uint32) uint32 {
 	defer b.PendingTLC.Lock.Unlock()
 	b.PendingTLC.lastSeenTLCID[origin] = id
 	return b.PendingTLC.lastSeenTLCID[origin]
+}
+
+func (b *Blockchain) Mytime() uint32 {
+	return atomic.LoadUint32(&b.my_time)
+}
+
+func (b *Blockchain) AdvanceToNextRound() uint32 {
+	return atomic.AddUint32(&b.my_time, 1)
+}
+
+func (b *Blockchain) AddPendingBlock(bp *message.BlockPublish) {
+	b.PendingBlocks.Lock.Lock()
+	defer b.PendingBlocks.Lock.Unlock()
+	b.PendingBlocks.PendingBlocks <- bp
+}
+
+func (b *Blockchain) HasPendingBlocks() bool {
+	b.PendingBlocks.Lock.RLock()
+	defer b.PendingBlocks.Lock.RUnlock()
+	return len(b.PendingBlocks.PendingBlocks) > 0
 }

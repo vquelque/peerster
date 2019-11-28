@@ -105,5 +105,5 @@ $(document).ready(function() {
     searchResults();
   }
 
-  setInterval(update, 1000); //fetch messages every second
+  setInterval(update, 10000); //fetch messages every 10 second
 });

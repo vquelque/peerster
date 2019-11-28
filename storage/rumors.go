@@ -25,7 +25,7 @@ func NewRumorStorage() *RumorStorage {
 	return st
 }
 
-// StoreRumor stores a rumor message
+// StoreRumor stores a rumor packet
 func (storage *RumorStorage) Store(pkt *message.RumorPacket) {
 	storage.lock.Lock()
 	defer storage.lock.Unlock()

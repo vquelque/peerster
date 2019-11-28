@@ -12,13 +12,6 @@ import (
 
 // Procecces incoming rumor message/TLC packet.
 func (gsp *Gossiper) processRumorMessage(msg *message.RumorMessage, sender string) {
-	next := gsp.VectorClock.NextRumorForPeer(msg.Origin)
-	if sender != "" && msg.ID >= next && msg.Origin != gsp.Name {
-		gsp.Routing.UpdateRoute(msg, sender) //update routing table
-		if msg.Text != "" {
-			fmt.Println(gsp.Routing.PrintUpdate(msg.Origin))
-		}
-	}
 	rp := &message.RumorPacket{RumorMessage: msg}
 	gsp.processRumorPacket(rp, sender)
 }
@@ -27,9 +20,17 @@ func (gsp *Gossiper) processRumorPacket(pkt *message.RumorPacket, sender string)
 	//if sender is nil then it is a client message
 
 	origin, id, rumor := pkt.GetDetails()
-	//store rumor packet
+	//store rumor packets
 
-	if gsp.isValid(pkt) {
+	next := gsp.VectorClock.NextMessageForPeer(origin)
+	if rumor && sender != "" && id >= next && origin != gsp.Name {
+		gsp.Routing.UpdateRoute(pkt.RumorMessage, sender) //update routing table
+		if pkt.RumorMessage.Text != "" {
+			fmt.Println(gsp.Routing.PrintUpdate(pkt.RumorMessage.Origin))
+		}
+	}
+
+	if id == next {
 		if sender != "" {
 			fmt.Println(pkt.String(origin))
 		}
@@ -48,17 +49,17 @@ func (gsp *Gossiper) processRumorPacket(pkt *message.RumorPacket, sender string)
 		}
 	}
 
-	if !rumor && id <= gsp.VectorClock.NextTLCForPeer(origin) {
-		//TLC Packet
-		fmt.Println(gsp.Blockchain.IsPending(pkt.TLCMessage))
-		if gsp.Blockchain.IsPending(pkt.TLCMessage) && pkt.TLCMessage.Confirmed {
-			fmt.Println(pkt.String(origin))
-			randPeer := gsp.Peers.PickRandomPeer(sender)
-			if randPeer != "" {
-				gsp.rumormonger(pkt, randPeer)
-			}
-		}
-	}
+	// if !rumor && id <= gsp.VectorClock.NextTLCForPeer(origin) {
+	// 	//TLC Packet
+	// 	fmt.Println(gsp.Blockchain.IsPending(pkt.TLCMessage))
+	// 	if gsp.Blockchain.IsPending(pkt.TLCMessage) && pkt.TLCMessage.Confirmed {
+	// 		fmt.Println(pkt.String(origin))
+	// 		randPeer := gsp.Peers.PickRandomPeer(sender)
+	// 		if randPeer != "" {
+	// 			gsp.rumormonger(pkt, randPeer)
+	// 		}
+	// 	}
+	// }
 
 	// acknowledge the packet if not sent by client
 	if sender != "" {
@@ -153,13 +154,13 @@ func (gsp *Gossiper) synchronizeWithPeer(same bool, toAsk []vector.PeerStatus, t
 	}
 }
 
-func (gsp *Gossiper) isValid(pkt *message.RumorPacket) bool {
-	switch {
-	case pkt.RumorMessage != nil:
-		return gsp.VectorClock.NextRumorForPeer(pkt.RumorMessage.Origin) == pkt.RumorMessage.ID
-	case pkt.TLCMessage != nil:
-		return gsp.VectorClock.NextTLCForPeer(pkt.TLCMessage.Origin) == pkt.TLCMessage.ID
-	default:
-		return false
-	}
-}
+// func (gsp *Gossiper) isValid(pkt *message.RumorPacket) bool {
+// 	switch {
+// 	case pkt.RumorMessage != nil:
+// 		return gsp.VectorClock.NextRumorForPeer(pkt.RumorMessage.Origin) == pkt.RumorMessage.ID
+// 	case pkt.TLCMessage != nil:
+// 		return gsp.VectorClock.NextTLCForPeer(pkt.TLCMessage.Origin) == pkt.TLCMessage.ID
+// 	default:
+// 		return false
+// 	}
+// }

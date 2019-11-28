@@ -14,7 +14,7 @@ type PendingRequests struct {
 }
 
 type SearchResults struct {
-	results map[utils.SHA256]map[uint64]string // file metahash --> chiunkcount --> peer
+	results map[utils.SHA256]map[uint64][]string // file metahash --> chiunkcount --> peer
 	lock    sync.RWMutex
 }
 
@@ -23,7 +23,7 @@ func NewPendingRequests() *PendingRequests {
 }
 
 func NewSearchResult() *SearchResults {
-	return &SearchResults{results: make(map[utils.SHA256]map[uint64]string, 0), lock: sync.RWMutex{}}
+	return &SearchResults{results: make(map[utils.SHA256]map[uint64][]string, 0)}
 }
 
 func (pr *PendingRequests) Add(r *message.SearchRequest) {
@@ -51,31 +51,40 @@ func (pr *PendingRequests) CheckPendingRequestPresent(r *message.SearchRequest) 
 	return ok
 }
 
-func (sr *SearchResults) AddSearchResult(r *message.SearchResult, origin string) {
+func (sr *SearchResults) AddSearchResult(r *message.SearchResult, origin string) bool {
+	new := false
 	sr.lock.Lock()
 	defer sr.lock.Unlock()
 	metahash := utils.SliceToHash(r.MetafileHash)
 	_, found := sr.results[metahash]
 	if !found {
-		sr.results[metahash] = make(map[uint64]string, r.ChunkCount)
+		sr.results[metahash] = make(map[uint64][]string, r.ChunkCount)
 	}
 	for _, c := range r.ChunkMap {
-		sr.results[metahash][c] = origin
+		if !utils.Contains(sr.results[metahash][c], origin) {
+			_, found := sr.results[metahash][c]
+			if !found {
+				sr.results[metahash][c] = make([]string, 0)
+			}
+			sr.results[metahash][c] = append(sr.results[metahash][c], origin)
+			new = true
+		}
 	}
+	return new
 }
 
 func (sr *SearchResults) IsComplete(metahash utils.SHA256) bool {
 	sr.lock.RLock()
 	defer sr.lock.RUnlock()
 	for _, c := range sr.results[metahash] {
-		if c == "" {
+		if len(c) < 1 {
 			return false
 		}
 	}
 	return true
 }
 
-func (sr *SearchResults) GetChunksSourceMap(metahash utils.SHA256) map[uint64]string {
+func (sr *SearchResults) GetChunksSourceMap(metahash utils.SHA256) map[uint64][]string {
 	sr.lock.RLock()
 	defer sr.lock.RUnlock()
 	cMap, found := sr.results[metahash]

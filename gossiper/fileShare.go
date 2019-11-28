@@ -64,7 +64,7 @@ func (gsp *Gossiper) processFile(filename string) {
 	}
 }
 
-func (gsp *Gossiper) startFileDownload(metahash utils.SHA256, peer string, filename string, chunkSources map[uint64]string) {
+func (gsp *Gossiper) startFileDownload(metahash utils.SHA256, peer string, filename string, chunkSources map[uint64][]string) {
 	file := gsp.FileStorage.GetFile(metahash)
 	//fmt.Printf("STARTING FILE DOWNLOAD. Filename : %s. Peer : %s \n", filename, peer)
 	// if file != nil && file.Completed {
@@ -113,7 +113,7 @@ func (gsp *Gossiper) startFileDownload(metahash utils.SHA256, peer string, filen
 			chunk := gsp.FileStorage.GetChunkOrMeta(h)
 			if chunk == nil {
 				if chunkSources != nil {
-					peer = chunkSources[downloadedCount]
+					peer = chunkSources[downloadedCount][0]
 				}
 				fmt.Printf("DOWNLOADING %s chunk %d from %s \n", filename, downloadedCount+1, peer)
 				data, err := gsp.downloadFromPeer(h, peer)
@@ -240,5 +240,5 @@ func (gsp *Gossiper) forwardDataReply(r *message.DataReply) {
 func (gsp *Gossiper) startSearchedFileDownload(metahash utils.SHA256) {
 	chunkSources := gsp.ToDownload.GetChunkSources(metahash)
 	filename := gsp.ToDownload.GetFilename(metahash)
-	gsp.startFileDownload(metahash, chunkSources[0], filename, chunkSources)
+	gsp.startFileDownload(metahash, chunkSources[0][0], filename, chunkSources)
 }

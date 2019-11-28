@@ -34,7 +34,7 @@ $(document).ready(function() {
     });
   });
 
-  setInterval(fetchMessages, 1000); //fetch messages every seconds
+  setInterval(fetchMessages, 10000); //fetch messages every seconds
 });
 
 // Read a page's GET URL variables and return them as an associative array.

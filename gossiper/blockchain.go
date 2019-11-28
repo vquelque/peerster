@@ -14,7 +14,22 @@ import (
 func (gsp *Gossiper) PublishName(file *storage.File) {
 	fmt.Printf("PUBLISHING NAME %s ON BLOCKCHAIN\n", file.Name)
 	bp := blockchain.NewBlockPublish(file.Name, file.Size, file.MetafileHash)
-	nextID := gsp.VectorClock.NextTLCForPeer(gsp.Name)
+	gsp.Blockchain.AddPendingBlock(bp)
+}
+
+func (gsp *Gossiper) StartBlockPublishHandler() {
+	go func() {
+		for {
+			select {
+			case bp := <-gsp.Blockchain.PendingBlocks.PendingBlocks:
+				gsp.HandleBlockPublish(bp)
+			}
+		}
+	}()
+}
+
+func (gsp *Gossiper) HandleBlockPublish(bp *message.BlockPublish) {
+	nextID := gsp.VectorClock.NextMessageForPeer(gsp.Name)
 	TLC := message.NewTLCMessage(gsp.Name, nextID, bp, false)
 	validTx := gsp.Blockchain.AddPendingTLCIfValid(TLC)
 	if !validTx {
@@ -40,11 +55,11 @@ func (gsp *Gossiper) PublishName(file *storage.File) {
 		case <-timer.C:
 			//RUMORMONGER AGAIN
 			fmt.Printf("MONGERING AGAIN TLC. STUBBORDN TIMEOUT EXCEEDED. \n")
-			gsp.WaitingForTLCAck.UnregisterTLCAckObservers(TLC)
-			nextID := gsp.VectorClock.NextTLCForPeer(gsp.Name)
-			acknowledged = []string{gsp.Name} //reset ack for this TLC
-			TLC = message.NewTLCMessage(gsp.Name, nextID, bp, false)
-			channel = gsp.WaitingForTLCAck.RegisterTLCAckObserver(TLC)
+			// gsp.WaitingForTLCAck.UnregisterTLCAckObservers(TLC)
+			// nextID := gsp.VectorClock.NextTLCForPeer(gsp.Name)
+			// acknowledged = []string{gsp.Name} //reset ack for this TLC
+			// TLC = message.NewTLCMessage(gsp.Name, nextID, bp, false)
+			// channel = gsp.WaitingForTLCAck.RegisterTLCAckObserver(TLC)
 			gsp.mongerTLC(TLC, "")
 		case ack := <-channel:
 			//received ack
@@ -54,6 +69,7 @@ func (gsp *Gossiper) PublishName(file *storage.File) {
 				confirmedTLC := message.NewTLCMessage(gsp.Name, TLC.ID, &TLC.TxBlock, true)
 				fmt.Printf("RE-BROADCAST ID %d WITNESSES %s\n", TLC.ID, strings.Join(acknowledged, ","))
 				gsp.processTLCMessage(confirmedTLC, "")
+				gsp.Blockchain.AdvanceToNextRound()
 				return
 			}
 		}
@@ -77,7 +93,6 @@ func (gsp *Gossiper) processTLCMessage(tlcmsg *message.TLCMessage, sender string
 }
 
 func (gsp *Gossiper) mongerTLC(tlcmsg *message.TLCMessage, sender string) {
-	fmt.Println(tlcmsg.String(sender))
 	gp := &message.RumorPacket{TLCMessage: tlcmsg}
 	gsp.processRumorPacket(gp, sender)
 }

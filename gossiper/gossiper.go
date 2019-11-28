@@ -182,7 +182,7 @@ func (gsp *Gossiper) startRoutingMessageHandler() {
 }
 
 func (gsp *Gossiper) sendRouteRumor(peer string) {
-	rID := gsp.VectorClock.NextRumorForPeer(gsp.Name)
+	rID := gsp.VectorClock.NextMessageForPeer(gsp.Name)
 	r := message.NewRouteRumorMessage(gsp.Name, rID)
 	gsp.processRumorMessage(r, "")
 }
@@ -273,5 +273,8 @@ func (gsp *Gossiper) Start() {
 	}
 	if gsp.Rtimer > 0 {
 		gsp.startRoutingMessageHandler()
+	}
+	if gsp.AdditionalFlags.HW3ex2 || gsp.AdditionalFlags.HW3ex3 {
+		gsp.StartBlockPublishHandler()
 	}
 }

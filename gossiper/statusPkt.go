@@ -31,10 +31,9 @@ func (gsp *Gossiper) processStatusPacket(sp *vector.StatusPacket, sender string)
 		// A registered routine was expecting a status packet.
 		// Forward the result of the comparison to the routine to potentially
 		// trigger the coin toss.
-		//log.Print("OBSERVER FOUND")
+		// log.Print("OBSERVER FOUND")
 		select {
 		case observerChan <- same:
-		default:
 		}
 	}
 	// if no registered channel, it is an anti-entropy status packet.

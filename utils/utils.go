@@ -66,3 +66,23 @@ func SliceToHash(hash []byte) SHA256 {
 	copy(h[:], hash)
 	return h
 }
+
+func ChunkMapToString(cmap []uint64) string {
+	var str string
+	for i, c := range cmap {
+		if i > 0 {
+			str += ","
+		}
+		str += fmt.Sprintf("%d", c)
+	}
+	return str
+}
+
+func Contains(s []string, e string) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
+}
