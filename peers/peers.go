@@ -97,6 +97,18 @@ func (peerSet *Peers) GetAllPeers() []string {
 	return peerList
 }
 
+func (peerSet *Peers) GetAllPeersExcept(except string) []string {
+	peerSet.lock.RLock()
+	defer peerSet.lock.RUnlock()
+	peerList := make([]string, 0)
+	for peer := range peerSet.peers {
+		if peer != except {
+			peerList = append(peerList, peer)
+		}
+	}
+	return peerList
+}
+
 func (peerSet *Peers) Size() int {
 	peerSet.lock.RLock()
 	defer peerSet.lock.RUnlock()

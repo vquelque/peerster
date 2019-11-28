@@ -29,10 +29,7 @@ func NewSearchResult() *SearchResults {
 func (pr *PendingRequests) Add(r *message.SearchRequest) {
 	pr.lock.Lock()
 	defer pr.lock.Unlock()
-	_, ok := pr.requests[GetRequestID(r)]
-	if !ok {
-		pr.requests[GetRequestID(r)] = true
-	}
+	pr.requests[GetRequestID(r)] = true
 }
 
 func (pr *PendingRequests) Delete(r *message.SearchRequest) {

@@ -232,7 +232,7 @@ func (gsp *Gossiper) processMessages(peerMsgs <-chan *receivedPackets, clientMsg
 			case gp.DataReply != nil:
 				go gsp.processDataReply(gp.DataReply)
 			case gp.SearchRequest != nil:
-				go gsp.processSearchRequest(gp.SearchRequest)
+				go gsp.processSearchRequest(gp.SearchRequest, peerMsg.sender)
 			case gp.SearchReply != nil:
 				go gsp.processSearchReply(gp.SearchReply)
 			case gp.TLCMessage != nil:

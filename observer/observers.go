@@ -116,11 +116,7 @@ func (obs *SearchObserver) RegisterSearchObserver(sr *message.SearchRequest) cha
 func (obs *SearchObserver) UnregisterSearchObserver(sr *message.SearchRequest) {
 	obs.lock.Lock()
 	defer obs.lock.Unlock()
-	ackChan, found := obs.waitingForReply[sr]
-	if found && ackChan != nil {
-		close(ackChan)
-		delete(obs.waitingForReply, sr)
-	}
+	delete(obs.waitingForReply, sr)
 }
 
 func (obs *SearchObserver) SendMatchToSearchObserver(r *message.SearchReply, keyword string) {

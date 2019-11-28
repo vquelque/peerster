@@ -11,10 +11,10 @@ import (
 	"github.com/vquelque/Peerster/utils"
 )
 
-func (gsp *Gossiper) processSearchRequest(sr *message.SearchRequest) {
+func (gsp *Gossiper) processSearchRequest(sr *message.SearchRequest, origin string) {
 	if gsp.PendingSearchRequest.CheckPendingRequestPresent(sr) {
 		// search request already received -> do not process
-		fmt.Printf("SR ALREADY REGISTERED \n")
+		// fmt.Printf("SR ALREADY REGISTERED \n")
 		return
 	}
 	gsp.registerSearchRequest(sr)
@@ -41,10 +41,10 @@ func (gsp *Gossiper) processSearchRequest(sr *message.SearchRequest) {
 		reply := message.NewSearchReply(gsp.Name, sr.Origin, constant.DefaultHopLimit, results)
 		gsp.sendSearchReply(reply)
 	}
-	sr.Budget = sr.Budget - 1
-	if sr.Budget > 0 {
+	if sr.Budget > 1 {
+		sr.Budget = sr.Budget - 1
 		// log.Printf("DISTRIBUTING REQUEST WITH BUDGET %d", sr.Budget)
-		gsp.distributeSearchRequest(sr)
+		gsp.distributeSearchRequest(sr, origin)
 	}
 }
 
@@ -75,8 +75,8 @@ func (gsp *Gossiper) sendSearchReply(r *message.SearchReply) {
 	}
 }
 
-func (gsp *Gossiper) distributeSearchRequest(sr *message.SearchRequest) {
-	neighbors := gsp.Peers.GetAllPeers()
+func (gsp *Gossiper) distributeSearchRequest(sr *message.SearchRequest, origin string) {
+	neighbors := gsp.Peers.GetAllPeersExcept(origin)
 	peers := uint64(len(neighbors))
 	//split remaining budget evenly accross peers
 	mBudget := sr.Budget / peers
@@ -104,7 +104,7 @@ func (gsp *Gossiper) registerSearchRequest(sr *message.SearchRequest) {
 		select {
 		case <-timer.C:
 			// timer elapsed : unregister search request
-			log.Printf("UNREGISTERED SR WITH ID %s \n", storage.GetRequestID(sr))
+			// log.Printf("UNREGISTERED SR WITH ID %s \n", storage.GetRequestID(sr))
 			gsp.PendingSearchRequest.Delete(sr)
 			timer.Stop()
 		}
@@ -112,16 +112,13 @@ func (gsp *Gossiper) registerSearchRequest(sr *message.SearchRequest) {
 }
 
 func (gsp *Gossiper) sendSearchRequest(sr *message.SearchRequest, peer string) {
-	if sr.Budget > 0 {
-		// log.Printf("Sending search request to %s with budget %d \n", peer, sr.Budget)
-		gp := &GossipPacket{SearchRequest: sr}
-		gsp.send(gp, peer)
-	}
+	// log.Printf("Sending search request to %s with budget %d \n", peer, sr.Budget)
+	gp := &GossipPacket{SearchRequest: sr}
+	gsp.send(gp, peer)
 }
 
 // search request initiated from this peer
 func (gsp *Gossiper) startSearchRequest(keywords []string, budget uint64) {
-	//TODO CHECK IF WE DO NOT STILL HAVE A PENDING REQUEST FOR THIS KEYWORD ?
 	log.Printf("STARTING SEARCH REQUEST WITH KEYWORDS %s AND BUDGET %d", keywords, budget)
 	expandingSearch := false
 	if budget == 0 {
@@ -130,7 +127,7 @@ func (gsp *Gossiper) startSearchRequest(keywords []string, budget uint64) {
 	}
 	timeout := 0
 	sr := message.NewSearchRequest(gsp.Name, keywords, budget)
-	gsp.processSearchRequest(sr)
+	gsp.processSearchRequest(sr, "")
 	rTimerDuration := time.Duration(constant.SearchRequestResendTimer) * time.Second
 	timer := time.NewTicker(rTimerDuration)
 	match := gsp.WaitingForSearchReply.RegisterSearchObserver(sr)
@@ -138,22 +135,23 @@ func (gsp *Gossiper) startSearchRequest(keywords []string, budget uint64) {
 	filenames := make(map[utils.SHA256]string) //filename temp
 	defer func() {
 		gsp.WaitingForSearchReply.UnregisterSearchObserver(sr)
+		gsp.PendingSearchRequest.Delete(sr)
 		timer.Stop()
 	}()
 	for {
 		select {
 		case <-timer.C:
 			timeout++
-			if timeout > constant.SearchRequestMaxRetries {
-				fmt.Printf("REQUEST TIMEOUT \n")
-				return
-			}
 			if expandingSearch {
 				if sr.Budget < constant.MaxBudget {
 					sr.Budget = sr.Budget * 2
-					gsp.distributeSearchRequest(sr)
+					gsp.distributeSearchRequest(sr, "")
 					// log.Printf("EXPANDING SEARCH CIRCLE BUDGET %d \n", sr.Budget)
 				}
+			}
+			if timeout > constant.SearchRequestMaxRetries {
+				fmt.Printf("REQUEST TIMEOUT \n")
+				return
 			}
 		case reply := <-match:
 			for _, r := range reply.Results {
