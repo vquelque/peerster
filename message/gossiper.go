@@ -87,7 +87,7 @@ type BlockPublish struct {
 type TLCMessage struct {
 	Origin      string
 	ID          uint32
-	Confirmed   bool
+	Confirmed   int
 	TxBlock     BlockPublish
 	VectorClock *vector.StatusPacket
 	Fitness     float32
@@ -190,7 +190,7 @@ func NewSearchReply(origin string, destination string, hoplimit uint32, results 
 	return sr
 }
 
-func NewTLCMessage(origin string, id uint32, txBlock *BlockPublish, confirmed bool) *TLCMessage {
+func NewTLCMessage(origin string, id uint32, txBlock *BlockPublish, confirmed int) *TLCMessage {
 	return &TLCMessage{
 		Origin:    origin,
 		ID:        id,
@@ -243,10 +243,10 @@ func (pkt *RumorPacket) GetDetails() (string, uint32, bool) {
 func (tlcmsg *TLCMessage) String(origin string) string {
 	var str string
 	switch tlcmsg.Confirmed {
-	case false:
+	case -1:
 		str = fmt.Sprintf("UNCONFIRMED GOSSIP origin %s ID %d file name %s size %d metahash %x",
 			tlcmsg.Origin, tlcmsg.ID, tlcmsg.TxBlock.Transaction.Name, tlcmsg.TxBlock.Transaction.Size, tlcmsg.TxBlock.Transaction.MetafileHah)
-	case true:
+	default:
 		str = fmt.Sprintf("CONFIRMED GOSSIP origin %s ID %d file name %s size %d metahash %x",
 			tlcmsg.Origin, tlcmsg.ID, tlcmsg.TxBlock.Transaction.Name, tlcmsg.TxBlock.Transaction.Size, tlcmsg.TxBlock.Transaction.MetafileHah)
 

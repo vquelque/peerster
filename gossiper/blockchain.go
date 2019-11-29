@@ -19,18 +19,18 @@ func (gsp *Gossiper) PublishName(file *storage.File) {
 
 func (gsp *Gossiper) StartBlockPublishHandler() {
 	go func() {
-		for {
-			select {
-			case bp := <-gsp.Blockchain.PendingBlocks.PendingBlocks:
-				gsp.HandleBlockPublish(bp)
-			}
+		select {
+		case bp := <-gsp.Blockchain.PendingBlocks.PendingBlocks:
+			// process block publish sequentially when we can advance to
+			// next rount
+			gsp.HandleBlockPublish(bp)
 		}
 	}()
 }
 
 func (gsp *Gossiper) HandleBlockPublish(bp *message.BlockPublish) {
 	nextID := gsp.VectorClock.NextMessageForPeer(gsp.Name)
-	TLC := message.NewTLCMessage(gsp.Name, nextID, bp, false)
+	TLC := message.NewTLCMessage(gsp.Name, nextID, bp, -1)
 	validTx := gsp.Blockchain.AddPendingTLCIfValid(TLC)
 	if !validTx {
 		log.Printf("NON VALID BLOCK. NAME ALREADY PUBLISHED\n")
@@ -65,30 +65,37 @@ func (gsp *Gossiper) HandleBlockPublish(bp *message.BlockPublish) {
 			//received ack
 			acknowledged = append(acknowledged, ack.Origin)
 			if uint64(len(acknowledged)) > majority {
-				//TODO RUMORMONGER TLC WITH CONFIRMED = TRUE for now BROADCAST
-				confirmedTLC := message.NewTLCMessage(gsp.Name, TLC.ID, &TLC.TxBlock, true)
+				// Broadcast confirmed TLC message
+				nextID := gsp.VectorClock.NextMessageForPeer(gsp.Name)
+				confirmedTLC := message.NewTLCMessage(gsp.Name, nextID, &TLC.TxBlock, int(TLC.ID))
 				fmt.Printf("RE-BROADCAST ID %d WITNESSES %s\n", TLC.ID, strings.Join(acknowledged, ","))
+				// TODO ADD RUMOR TO CONFIRMED RUMORS IN THE UI
 				gsp.processTLCMessage(confirmedTLC, "")
 				gsp.Blockchain.AdvanceToNextRound()
 				return
 			}
+		case <-gsp.Blockchain.NextRound:
+			// stop waiting for ACKs for this message
+			return
 		}
 	}
 }
 
 func (gsp *Gossiper) processTLCMessage(tlcmsg *message.TLCMessage, sender string) {
 	rp := &message.RumorPacket{TLCMessage: tlcmsg}
-	gsp.processRumorPacket(rp, sender)
-	if tlcmsg.Confirmed {
+	gsp.processRumorPacket(rp, sender) //here we increment TLC counter for sender
+	if tlcmsg.Confirmed > 0 {
 		gsp.Blockchain.Accept(tlcmsg)
 		return
 	}
 	valid := gsp.Blockchain.AddPendingTLCIfValid(tlcmsg)
 	//send ACK to origin
 	if valid && tlcmsg.Origin != gsp.Name {
-		ack := blockchain.NewTLCAck(gsp.Name, tlcmsg.Origin, tlcmsg.ID, gsp.HopLimit)
-		fmt.Printf("SENDING ACK origin %s ID %d \n", gsp.Name, tlcmsg.ID)
-		gsp.sendTLACK(ack)
+		if gsp.AdditionalFlags.HW3ex2 || gsp.Blockchain.GetRoundForPeer(tlcmsg.Origin) >= gsp.Blockchain.Mytime() {
+			ack := blockchain.NewTLCAck(gsp.Name, tlcmsg.Origin, tlcmsg.ID, gsp.HopLimit)
+			fmt.Printf("SENDING ACK origin %s ID %d \n", gsp.Name, tlcmsg.ID)
+			gsp.sendTLACK(ack)
+		}
 	}
 }
 

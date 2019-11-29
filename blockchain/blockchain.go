@@ -1,6 +1,7 @@
 package blockchain
 
 import (
+	"fmt"
 	"sync"
 	"sync/atomic"
 
@@ -14,28 +15,37 @@ type Blocks struct {
 }
 
 type PendingTLC struct {
-	PendingTLC    map[utils.SHA256]*message.TLCMessage
-	lastSeenTLCID map[string]uint32 //last tlc id for peer
-	Lock          sync.RWMutex
+	PendingTLC map[utils.SHA256]*message.TLCMessage
+	Lock       sync.RWMutex
 }
 
 type PendingBlocks struct {
-	PendingBlocks chan *message.BlockPublish
-	Lock          sync.RWMutex
+	PendingBlocks  chan *message.BlockPublish
+	ConfirmedBlock chan *message.TLCMessage
+	Lock           sync.RWMutex
+}
+
+type TLCRoundVector struct {
+	TLCRoundForPeer map[string]uint32
+	Lock            sync.RWMutex
 }
 
 type Blockchain struct {
-	Blocks        *Blocks
-	PendingTLC    *PendingTLC
-	PendingBlocks *PendingBlocks
-	my_time       uint32
+	Blocks         *Blocks
+	PendingTLC     *PendingTLC
+	PendingBlocks  *PendingBlocks
+	TLCRoundVector *TLCRoundVector
+	NextRound      chan bool
+	myTime         uint32
 }
 
 func InitBlockchain() *Blockchain {
 	blck := &Blocks{Blocks: make(map[utils.SHA256]*message.BlockPublish)}
-	pTLC := &PendingTLC{PendingTLC: make(map[utils.SHA256]*message.TLCMessage), lastSeenTLCID: make(map[string]uint32)}
-	pBlocks := &PendingBlocks{PendingBlocks: make(chan *message.BlockPublish)}
-	return &Blockchain{Blocks: blck, PendingTLC: pTLC, PendingBlocks: pBlocks}
+	pTLC := &PendingTLC{PendingTLC: make(map[utils.SHA256]*message.TLCMessage)}
+	pBlocks := &PendingBlocks{PendingBlocks: make(chan *message.BlockPublish), ConfirmedBlock: make(chan *message.TLCMessage)}
+	tRV := &TLCRoundVector{TLCRoundForPeer: make(map[string]uint32, 0)}
+	nextRound := make(chan bool)
+	return &Blockchain{Blocks: blck, PendingTLC: pTLC, PendingBlocks: pBlocks, TLCRoundVector: tRV, NextRound: nextRound}
 }
 
 func NewBlockPublish(filename string, filesize int64, metahash utils.SHA256) *message.BlockPublish {
@@ -100,34 +110,24 @@ func (b *Blockchain) Accept(tlc *message.TLCMessage) *message.BlockPublish {
 	b.PendingTLC.Lock.Lock()
 	defer b.PendingTLC.Lock.Unlock()
 	hash := tlc.TxBlock.Transaction.Hash()
-	b.Blocks.Blocks[hash] = &tlc.TxBlock
-	if tlc, pending := b.PendingTLC.PendingTLC[hash]; pending {
-		//for mapping in rumor storage
-		tlc.Confirmed = true
+	if _, pending := b.PendingTLC.PendingTLC[hash]; pending {
+		//for mapping in rumor storages
+		// tlc.Confirmed = true
+		fmt.Printf("PENDING TRANSACTION FOUND FOR TLC WITH HASH %x. ACCEPTING BLOCK\n", hash)
+		b.Blocks.Blocks[hash] = &tlc.TxBlock
 		delete(b.PendingTLC.PendingTLC, hash)
+		b.AdvanceRoundForPeer(tlc.Origin)
+		b.PendingBlocks.ConfirmedBlock <- tlc
 	}
 	return b.Blocks.Blocks[hash]
 }
 
-func (b *Blockchain) LastSeenTLCID(origin string) uint32 {
-	b.PendingTLC.Lock.RLock()
-	defer b.PendingTLC.Lock.RUnlock()
-	return b.PendingTLC.lastSeenTLCID[origin]
-}
-
-func (b *Blockchain) SetLastSeenTLCID(origin string, id uint32) uint32 {
-	b.PendingTLC.Lock.Lock()
-	defer b.PendingTLC.Lock.Unlock()
-	b.PendingTLC.lastSeenTLCID[origin] = id
-	return b.PendingTLC.lastSeenTLCID[origin]
-}
-
 func (b *Blockchain) Mytime() uint32 {
-	return atomic.LoadUint32(&b.my_time)
+	return atomic.LoadUint32(&b.myTime)
 }
 
 func (b *Blockchain) AdvanceToNextRound() uint32 {
-	return atomic.AddUint32(&b.my_time, 1)
+	return atomic.AddUint32(&b.myTime, 1)
 }
 
 func (b *Blockchain) AddPendingBlock(bp *message.BlockPublish) {
@@ -140,4 +140,34 @@ func (b *Blockchain) HasPendingBlocks() bool {
 	b.PendingBlocks.Lock.RLock()
 	defer b.PendingBlocks.Lock.RUnlock()
 	return len(b.PendingBlocks.PendingBlocks) > 0
+}
+
+func (b *Blockchain) AdvanceRoundForPeer(peer string) {
+	b.TLCRoundVector.Lock.Lock()
+	defer b.TLCRoundVector.Lock.Unlock()
+	b.TLCRoundVector.TLCRoundForPeer[peer]++
+}
+
+func (b *Blockchain) GetRoundForPeer(peer string) uint32 {
+	b.TLCRoundVector.Lock.Lock()
+	defer b.TLCRoundVector.Lock.Unlock()
+	r, f := b.TLCRoundVector.TLCRoundForPeer[peer]
+	if f {
+		return r
+	} else {
+		return 0
+	}
+}
+
+func (b *Blockchain) CheckAllowedToPublish(peerNumber uint64) bool {
+	b.TLCRoundVector.Lock.RLock()
+	defer b.TLCRoundVector.Lock.RUnlock()
+	currRound := b.Mytime()
+	var p uint64 = 0
+	for _, r := range b.TLCRoundVector.TLCRoundForPeer {
+		if r >= currRound {
+			p++
+		}
+	}
+	return p > peerNumber/2
 }
