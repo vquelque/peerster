@@ -3,7 +3,6 @@ package blockchain
 import (
 	"fmt"
 	"sync"
-	"sync/atomic"
 
 	"github.com/vquelque/Peerster/message"
 	"github.com/vquelque/Peerster/utils"
@@ -20,14 +19,15 @@ type PendingTLC struct {
 }
 
 type PendingBlocks struct {
-	PendingBlocks  chan *message.BlockPublish
-	ConfirmedBlock chan *message.TLCMessage
-	Lock           sync.RWMutex
+	PendingBlocks    []*message.BlockPublish
+	AllowedToPublish chan bool
+	Lock             sync.RWMutex
 }
 
 type TLCRoundVector struct {
 	TLCRoundForPeer map[string]uint32
 	Lock            sync.RWMutex
+	myTime          uint32
 }
 
 type Blockchain struct {
@@ -36,13 +36,12 @@ type Blockchain struct {
 	PendingBlocks  *PendingBlocks
 	TLCRoundVector *TLCRoundVector
 	NextRound      chan bool
-	myTime         uint32
 }
 
 func InitBlockchain() *Blockchain {
 	blck := &Blocks{Blocks: make(map[utils.SHA256]*message.BlockPublish)}
 	pTLC := &PendingTLC{PendingTLC: make(map[utils.SHA256]*message.TLCMessage)}
-	pBlocks := &PendingBlocks{PendingBlocks: make(chan *message.BlockPublish), ConfirmedBlock: make(chan *message.TLCMessage)}
+	pBlocks := &PendingBlocks{PendingBlocks: make([]*message.BlockPublish, 0), AllowedToPublish: make(chan bool)}
 	tRV := &TLCRoundVector{TLCRoundForPeer: make(map[string]uint32, 0)}
 	nextRound := make(chan bool)
 	return &Blockchain{Blocks: blck, PendingTLC: pTLC, PendingBlocks: pBlocks, TLCRoundVector: tRV, NextRound: nextRound}
@@ -117,29 +116,42 @@ func (b *Blockchain) Accept(tlc *message.TLCMessage) *message.BlockPublish {
 		b.Blocks.Blocks[hash] = &tlc.TxBlock
 		delete(b.PendingTLC.PendingTLC, hash)
 		b.AdvanceRoundForPeer(tlc.Origin)
-		b.PendingBlocks.ConfirmedBlock <- tlc
 	}
 	return b.Blocks.Blocks[hash]
 }
 
-func (b *Blockchain) Mytime() uint32 {
-	return atomic.LoadUint32(&b.myTime)
+func (b *Blockchain) GetTime(peer string) uint32 {
+	b.TLCRoundVector.Lock.RLock()
+	defer b.TLCRoundVector.Lock.RUnlock()
+	return b.TLCRoundVector.TLCRoundForPeer[peer]
 }
 
-func (b *Blockchain) AdvanceToNextRound() uint32 {
-	return atomic.AddUint32(&b.myTime, 1)
+func (b *Blockchain) AdvanceToNextRound(peer string) uint32 {
+	b.TLCRoundVector.Lock.Lock()
+	defer b.TLCRoundVector.Lock.Unlock()
+	old := b.TLCRoundVector.TLCRoundForPeer[peer]
+	b.TLCRoundVector.TLCRoundForPeer[peer] = b.TLCRoundVector.TLCRoundForPeer[peer] + 1
+	return old
 }
 
 func (b *Blockchain) AddPendingBlock(bp *message.BlockPublish) {
 	b.PendingBlocks.Lock.Lock()
 	defer b.PendingBlocks.Lock.Unlock()
-	b.PendingBlocks.PendingBlocks <- bp
+	b.PendingBlocks.PendingBlocks = append(b.PendingBlocks.PendingBlocks, bp)
 }
 
 func (b *Blockchain) HasPendingBlocks() bool {
 	b.PendingBlocks.Lock.RLock()
 	defer b.PendingBlocks.Lock.RUnlock()
 	return len(b.PendingBlocks.PendingBlocks) > 0
+}
+
+func (b *Blockchain) ShiftPendingBlock() *message.BlockPublish {
+	b.PendingBlocks.Lock.RLock()
+	defer b.PendingBlocks.Lock.RUnlock()
+	pb := b.PendingBlocks.PendingBlocks[0]
+	b.PendingBlocks.PendingBlocks = b.PendingBlocks.PendingBlocks[1:]
+	return pb
 }
 
 func (b *Blockchain) AdvanceRoundForPeer(peer string) {
@@ -151,23 +163,20 @@ func (b *Blockchain) AdvanceRoundForPeer(peer string) {
 func (b *Blockchain) GetRoundForPeer(peer string) uint32 {
 	b.TLCRoundVector.Lock.Lock()
 	defer b.TLCRoundVector.Lock.Unlock()
-	r, f := b.TLCRoundVector.TLCRoundForPeer[peer]
-	if f {
-		return r
-	} else {
-		return 0
-	}
+	return b.TLCRoundVector.TLCRoundForPeer[peer]
 }
 
-func (b *Blockchain) CheckAllowedToPublish(peerNumber uint64) bool {
+func (b *Blockchain) CheckAllowedToPublish(peerNumber uint64, peer string) bool {
 	b.TLCRoundVector.Lock.RLock()
 	defer b.TLCRoundVector.Lock.RUnlock()
-	currRound := b.Mytime()
-	var p uint64 = 0
-	for _, r := range b.TLCRoundVector.TLCRoundForPeer {
-		if r >= currRound {
-			p++
+	currRound := b.TLCRoundVector.TLCRoundForPeer[peer]
+	var pNum uint64 = 0
+	for p, round := range b.TLCRoundVector.TLCRoundForPeer {
+		if p != peer && round >= currRound {
+			pNum++
 		}
 	}
-	return p > peerNumber/2
+	allowed := (pNum > peerNumber/2) || currRound == 0
+	fmt.Printf("ALLOWED TO PUBLISH %s. MYTIME : %d \n", allowed, currRound)
+	return allowed
 }
