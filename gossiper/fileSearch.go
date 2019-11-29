@@ -31,7 +31,7 @@ func (gsp *Gossiper) processSearchRequest(sr *message.SearchRequest, origin stri
 		chunks := make([]uint64, 0)
 		var index uint64
 		for index = 0; index < count; index++ {
-			chunks = append(chunks, index)
+			chunks = append(chunks, index+1)
 		}
 		sr := message.NewSearchResult(f.Name, f.MetafileHash[:], chunks, count)
 		results = append(results, sr)

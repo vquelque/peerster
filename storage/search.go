@@ -55,7 +55,8 @@ func (sr *SearchResults) AddSearchResult(r *message.SearchResult, origin string)
 	if !found {
 		sr.results[metahash] = make(map[uint64][]string, r.ChunkCount)
 	}
-	for _, c := range r.ChunkMap {
+	for _, ch := range r.ChunkMap {
+		c := ch - 1
 		if !utils.Contains(sr.results[metahash][c], origin) {
 			_, found := sr.results[metahash][c]
 			if !found {
