@@ -248,7 +248,7 @@ func (tlcmsg *TLCMessage) String(origin string) string {
 			tlcmsg.Origin, tlcmsg.ID, tlcmsg.TxBlock.Transaction.Name, tlcmsg.TxBlock.Transaction.Size, tlcmsg.TxBlock.Transaction.MetafileHah)
 	default:
 		str = fmt.Sprintf("CONFIRMED GOSSIP origin %s ID %d file name %s size %d metahash %x",
-			tlcmsg.Origin, tlcmsg.ID, tlcmsg.TxBlock.Transaction.Name, tlcmsg.TxBlock.Transaction.Size, tlcmsg.TxBlock.Transaction.MetafileHah)
+			tlcmsg.Origin, tlcmsg.Confirmed, tlcmsg.TxBlock.Transaction.Name, tlcmsg.TxBlock.Transaction.Size, tlcmsg.TxBlock.Transaction.MetafileHah)
 
 	}
 	return str
