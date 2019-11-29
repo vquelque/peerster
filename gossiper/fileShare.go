@@ -65,20 +65,20 @@ func (gsp *Gossiper) processFile(filename string) {
 }
 
 func (gsp *Gossiper) startFileDownload(metahash utils.SHA256, peer string, filename string, chunkSources map[uint64][]string) {
-	file := gsp.FileStorage.GetFile(metahash)
-	//fmt.Printf("STARTING FILE DOWNLOAD. Filename : %s. Peer : %s \n", filename, peer)
-	// if file != nil && file.Completed {
-	// 	// already have file
-	// 	fmt.Printf("File already downloaded \n")
-	// 	return
-	// }
-	if file == nil {
-		file = &storage.File{Name: filename, MetafileHash: metahash, ChunkCount: 0, Completed: false}
-	}
 	go func() {
+		file := gsp.FileStorage.GetFile(metahash)
+		//fmt.Printf("STARTING FILE DOWNLOAD. Filename : %s. Peer : %s \n", filename, peer)
+		// if file != nil && file.Completed {
+		// 	// already have file
+		// 	fmt.Printf("File already downloaded \n")
+		// 	return
+		// }
+		if file == nil {
+			file = &storage.File{Name: filename, MetafileHash: metahash, ChunkCount: 0, Completed: false}
+		}
 		//get or request metafile
 		meta := gsp.FileStorage.GetMetafile(metahash)
-		if meta == nil {
+		if len(meta) == 0 {
 			fmt.Printf("DOWNLOADING metafile of %s from %s\n", filename, peer)
 			meta, err := gsp.downloadFromPeer(metahash, peer)
 			if err != nil {
@@ -95,7 +95,6 @@ func (gsp *Gossiper) startFileDownload(metahash utils.SHA256, peer string, filen
 		meta = gsp.FileStorage.GetMetafile(metahash)
 		toDownload := len(meta) / sha256.Size //number of chunks to download
 		file.ChunkCount = uint64(toDownload)
-		//	fmt.Printf("TO DOWN : %d \n", toDownload)
 
 		// create the slice of all hashes
 		var chunksHash []utils.SHA256

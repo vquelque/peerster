@@ -47,10 +47,8 @@ func (obs *Observer) Register(sender string) chan bool {
 func (obs *Observer) Unregister(sender string) {
 	obs.lock.Lock()
 	defer obs.lock.Unlock()
-	ackChan, found := obs.waitingForAck[sender]
-	if found && ackChan != nil {
-		delete(obs.waitingForAck, sender)
-	}
+	delete(obs.waitingForAck, sender)
+
 }
 
 func (obs *Observer) GetObserver(sp *vector.StatusPacket, peer string) chan bool {
@@ -82,11 +80,8 @@ func (obs *FileObserver) RegisterFileObserver(caller utils.SHA256) chan *message
 func (obs *FileObserver) UnregisterFileObserver(caller utils.SHA256) {
 	obs.lock.Lock()
 	defer obs.lock.Unlock()
-	ackChan, found := obs.waitingForData[caller]
-	if found && ackChan != nil {
-		close(ackChan)
-		delete(obs.waitingForData, caller)
-	}
+	delete(obs.waitingForData, caller)
+
 }
 
 func (obs *FileObserver) SendDataToObserver(caller utils.SHA256, chunk *message.DataReply) error {
@@ -155,11 +150,7 @@ func (obs *TLCAckObserver) UnregisterTLCAckObservers(tlcmsg *message.TLCMessage)
 	obs.lock.Lock()
 	defer obs.lock.Unlock()
 	id := TLCAckObserverIdentifier(tlcmsg)
-	ackChan, found := obs.waitingForAck[id]
-	if found && ackChan != nil {
-		close(ackChan)
-		delete(obs.waitingForAck, id)
-	}
+	delete(obs.waitingForAck, id)
 }
 
 func (obs *TLCAckObserver) SendTLCToAckObserver(r message.TLCAck) {
