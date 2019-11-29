@@ -237,8 +237,8 @@ func (gsp *Gossiper) forwardDataReply(r *message.DataReply) {
 	}
 }
 
-func (gsp *Gossiper) startSearchedFileDownload(metahash utils.SHA256) {
+func (gsp *Gossiper) startSearchedFileDownload(metahash utils.SHA256, filename string) {
 	chunkSources := gsp.ToDownload.GetChunkSources(metahash)
-	filename := gsp.ToDownload.GetFilename(metahash)
+	//	filename := gsp.ToDownload.GetFilename(metahash)
 	gsp.startFileDownload(metahash, chunkSources[0][0], filename, chunkSources)
 }

@@ -169,6 +169,9 @@ func (gsp *Gossiper) startSearchRequest(keywords []string, budget uint64) {
 				switch b {
 				case false:
 					if gsp.SearchResults.IsComplete(k) {
+						cMap := gsp.SearchResults.GetChunksSourceMap(k)
+						gsp.ToDownload.AddFileToDownload(k, filenames[k], cMap)
+						gsp.UIStorage.AddDownloadableFile(filenames[k], k)
 						matches[k] = true
 						nMatch++
 					}
@@ -180,11 +183,7 @@ func (gsp *Gossiper) startSearchRequest(keywords []string, budget uint64) {
 			if nMatch >= constant.SearchMatchThreshold {
 				fmt.Printf("SEARCH FINISHED \n")
 				for m, b := range matches {
-					if b == true {
-						cMap := gsp.SearchResults.GetChunksSourceMap(m)
-						gsp.ToDownload.AddFileToDownload(m, filenames[m], cMap)
-						gsp.UIStorage.AddDownloadableFile(filenames[m], m)
-					} else if b == false {
+					if b == false {
 						gsp.SearchResults.Clear(m)
 					}
 				}
@@ -194,10 +193,10 @@ func (gsp *Gossiper) startSearchRequest(keywords []string, budget uint64) {
 	}
 }
 
-func (gsp *Gossiper) StartSearchedFileDownload(metahash utils.SHA256) {
-	filename := gsp.ToDownload.GetFilename(metahash)
+func (gsp *Gossiper) StartSearchedFileDownload(metahash utils.SHA256, filename string) {
+	//filename := gsp.ToDownload.GetFilename(metahash)
 	sources := gsp.ToDownload.GetChunkSources(metahash)
-	if filename != "" && sources != nil {
+	if sources != nil {
 		gsp.startFileDownload(metahash, sources[0][0], filename, sources)
 	} else {
 		fmt.Printf("No peer known for this file \n")
