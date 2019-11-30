@@ -93,10 +93,7 @@ func (sr *SearchResults) GetChunksSourceMap(metahash utils.SHA256) map[uint64][]
 func (sr *SearchResults) Clear(metahash utils.SHA256) {
 	sr.lock.Lock()
 	defer sr.lock.Unlock()
-	_, found := sr.results[metahash]
-	if found {
-		delete(sr.results, metahash)
-	}
+	delete(sr.results, metahash)
 }
 
 func GetRequestID(r *message.SearchRequest) string {

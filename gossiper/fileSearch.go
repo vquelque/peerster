@@ -42,7 +42,6 @@ func (gsp *Gossiper) processSearchRequest(sr *message.SearchRequest, origin stri
 		gsp.sendSearchReply(reply)
 	}
 	if sr.Budget > 1 {
-		sr.Budget = sr.Budget - 1
 		// log.Printf("DISTRIBUTING REQUEST WITH BUDGET %d", sr.Budget)
 		gsp.distributeSearchRequest(sr, origin)
 	}
@@ -76,6 +75,7 @@ func (gsp *Gossiper) sendSearchReply(r *message.SearchReply) {
 }
 
 func (gsp *Gossiper) distributeSearchRequest(sr *message.SearchRequest, origin string) {
+	sr.Budget = sr.Budget - 1
 	neighbors := gsp.Peers.GetAllPeersExcept(origin)
 	peers := uint64(len(neighbors))
 	//split remaining budget evenly accross peers
@@ -112,7 +112,7 @@ func (gsp *Gossiper) registerSearchRequest(sr *message.SearchRequest) {
 }
 
 func (gsp *Gossiper) sendSearchRequest(sr *message.SearchRequest, peer string) {
-	// log.Printf("Sending search request to %s with budget %d \n", peer, sr.Budget)
+	//log.Printf("Sending search request to %s with budget %d \n", peer, sr.Budget)
 	gp := &GossipPacket{SearchRequest: sr}
 	gsp.send(gp, peer)
 }
@@ -127,6 +127,7 @@ func (gsp *Gossiper) startSearchRequest(keywords []string, budget uint64) {
 	}
 	timeout := 0
 	sr := message.NewSearchRequest(gsp.Name, keywords, budget)
+	currBudget := budget
 	gsp.processSearchRequest(sr, "")
 	rTimerDuration := time.Duration(constant.SearchRequestResendTimer) * time.Second
 	timer := time.NewTicker(rTimerDuration)
@@ -144,10 +145,11 @@ func (gsp *Gossiper) startSearchRequest(keywords []string, budget uint64) {
 		case <-timer.C:
 			timeout++
 			if expandingSearch {
-				if sr.Budget < constant.MaxBudget {
-					sr.Budget = sr.Budget * 2
+				if currBudget < constant.MaxBudget {
+					currBudget *= 2
+					sr.Budget = currBudget
 					gsp.distributeSearchRequest(sr, "")
-					log.Printf("EXPANDING SEARCH CIRCLE BUDGET %d \n", sr.Budget)
+					log.Printf("EXPANDING SEARCH CIRCLE BUDGET %d \n", currBudget)
 				}
 			}
 			if timeout > constant.SearchRequestMaxRetries {
@@ -183,10 +185,8 @@ func (gsp *Gossiper) startSearchRequest(keywords []string, budget uint64) {
 
 			if nMatch >= constant.SearchMatchThreshold {
 				fmt.Printf("SEARCH FINISHED \n")
-				for m, b := range matches {
-					if b == false {
-						gsp.SearchResults.Clear(m)
-					}
+				for m, _ := range matches {
+					gsp.SearchResults.Clear(m)
 				}
 				return
 			}
