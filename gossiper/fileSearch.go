@@ -132,6 +132,7 @@ func (gsp *Gossiper) startSearchRequest(keywords []string, budget uint64) {
 	timer := time.NewTicker(rTimerDuration)
 	match := gsp.WaitingForSearchReply.RegisterSearchObserver(sr)
 	matches := make(map[utils.SHA256]bool)     //metahash --> bool
+	nMatches := make(map[utils.SHA256]uint32)  //metahash --> number of match
 	filenames := make(map[utils.SHA256]string) //filename temp
 	defer func() {
 		gsp.WaitingForSearchReply.UnregisterSearchObserver(sr)
@@ -146,7 +147,7 @@ func (gsp *Gossiper) startSearchRequest(keywords []string, budget uint64) {
 				if sr.Budget < constant.MaxBudget {
 					sr.Budget = sr.Budget * 2
 					gsp.distributeSearchRequest(sr, "")
-					// log.Printf("EXPANDING SEARCH CIRCLE BUDGET %d \n", sr.Budget)
+					log.Printf("EXPANDING SEARCH CIRCLE BUDGET %d \n", sr.Budget)
 				}
 			}
 			if timeout > constant.SearchRequestMaxRetries {
@@ -156,15 +157,14 @@ func (gsp *Gossiper) startSearchRequest(keywords []string, budget uint64) {
 		case reply := <-match:
 			for _, r := range reply.Results {
 				metahash := utils.SliceToHash(r.MetafileHash)
-				gsp.SearchResults.AddSearchResult(r, reply.Origin)
-				fmt.Printf("FOUND match %s at %s metafile=%x chunks=%s \n", r.FileName, reply.Origin, r.MetafileHash, utils.ChunkMapToString(r.ChunkMap))
-				_, f := matches[metahash]
-				if !f {
+				new := gsp.SearchResults.AddSearchResult(r, reply.Origin)
+				if new {
+					fmt.Printf("FOUND match %s at %s metafile=%x chunks=%s \n", r.FileName, reply.Origin, r.MetafileHash, utils.ChunkMapToString(r.ChunkMap))
 					matches[metahash] = false
+					filenames[metahash] = r.FileName
 				}
-				filenames[metahash] = r.FileName
 			}
-			nMatch := 0
+			var nMatch uint32 = 0
 			for k, b := range matches {
 				switch b {
 				case false:
@@ -173,10 +173,11 @@ func (gsp *Gossiper) startSearchRequest(keywords []string, budget uint64) {
 						gsp.ToDownload.AddFileToDownload(k, filenames[k], cMap)
 						gsp.UIStorage.AddDownloadableFile(filenames[k], k)
 						matches[k] = true
-						nMatch++
+						nMatches[k] = nMatches[k] + 1
+						nMatch += nMatches[k]
 					}
 				case true:
-					nMatch++
+					nMatch += nMatches[k]
 				}
 			}
 

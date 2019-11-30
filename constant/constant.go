@@ -15,6 +15,6 @@ const DefaultSearchBudget = 2
 const SearchRequestResendTimer = 1
 const MaxBudget = 32
 const SearchMatchThreshold = 2
-const SearchRequestMaxRetries = 7
+const SearchRequestMaxRetries = 10
 
 const DefaultStubbornTimeout = 5
