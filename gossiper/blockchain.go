@@ -26,7 +26,7 @@ func (gsp *Gossiper) StartBlockPublishHandler() {
 		for {
 			select {
 			case <-gsp.Blockchain.PendingBlocks.AllowedToPublish:
-				fmt.Println(gsp.Blockchain.HasPendingBlocks())
+				fmt.Printf("ADVANCING TO round ​%d BASED ON CONFIRMED MESSAGES origin1 <origin> ID1 <ID>, origin2 <origin> ID2 <ID>​", gsp.Blockchain.GetRoundForPeer(gsp.Name))
 				if gsp.Blockchain.HasPendingBlocks() {
 					gsp.HandleBlockPublish(gsp.Blockchain.ShiftPendingBlock())
 				}
@@ -90,7 +90,7 @@ func (gsp *Gossiper) processTLCMessage(tlcmsg *message.TLCMessage, sender string
 	rp := &message.RumorPacket{TLCMessage: tlcmsg}
 	gsp.processRumorPacket(rp, sender)
 	if tlcmsg.Confirmed > 0 {
-		gsp.Blockchain.Accept(tlcmsg)
+		gsp.Blockchain.Accept(tlcmsg, tlcmsg.Origin == gsp.Name)
 		if gsp.Blockchain.CheckAllowedToPublish(gsp.AdditionalFlags.PeersNumber, gsp.Name) {
 			gsp.Blockchain.PendingBlocks.AllowedToPublish <- true
 		}
