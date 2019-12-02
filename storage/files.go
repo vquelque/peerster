@@ -147,6 +147,29 @@ func (fs *FileStorage) ChunkCount(metahash utils.SHA256) uint64 {
 	return count
 }
 
+func (fs *FileStorage) ChunkMap(metahash utils.SHA256) []uint64 {
+	fs.lock.RLock()
+	defer fs.lock.RUnlock()
+	chunks := make([]uint64, 0)
+	meta := fs.metafiles[metahash]
+	numChunks := len(meta) / sha256.Size //number of chunks
+	var chunksHash []utils.SHA256
+	for i := 0; i < numChunks; i++ {
+		j := i * sha256.Size
+		k := j + sha256.Size
+		var hash utils.SHA256
+		copy(hash[:], meta[j:k])
+		chunksHash = append(chunksHash, hash)
+	}
+	for c, m := range chunksHash {
+		_, found := fs.chunks[m]
+		if found {
+			chunks = append(chunks, uint64(c+1))
+		}
+	}
+	return chunks
+}
+
 func (td *ToDownload) AddFileToDownload(metahash utils.SHA256, filename string, chunks map[uint64][]string) {
 	td.lock.Lock()
 	defer td.lock.Unlock()
