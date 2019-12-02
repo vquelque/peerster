@@ -132,6 +132,7 @@ func (gsp *Gossiper) startSearchRequest(keywords []string, budget uint64) {
 	rTimerDuration := time.Duration(constant.SearchRequestResendTimer) * time.Second
 	timer := time.NewTicker(rTimerDuration)
 	match := gsp.WaitingForSearchReply.RegisterSearchObserver(sr)
+	fullMatch := 0
 	matches := make(map[utils.SHA256]bool)     //metahash --> bool
 	nMatches := make(map[utils.SHA256]uint32)  //metahash --> number of match
 	filenames := make(map[utils.SHA256]string) //filename temp
@@ -160,6 +161,9 @@ func (gsp *Gossiper) startSearchRequest(keywords []string, budget uint64) {
 			for _, r := range reply.Results {
 				metahash := utils.SliceToHash(r.MetafileHash)
 				new := gsp.SearchResults.AddSearchResult(r, reply.Origin)
+				if uint64(len(r.ChunkMap)) == r.ChunkCount {
+					fullMatch++
+				}
 				if new {
 					fmt.Printf("FOUND match %s at %s metafile=%x chunks=%s \n", r.FileName, reply.Origin, r.MetafileHash, utils.ChunkMapToString(r.ChunkMap))
 					matches[metahash] = false
@@ -183,9 +187,9 @@ func (gsp *Gossiper) startSearchRequest(keywords []string, budget uint64) {
 				}
 			}
 
-			if nMatch >= constant.SearchMatchThreshold {
+			if fullMatch >= constant.SearchMatchThreshold {
 				fmt.Printf("SEARCH FINISHED \n")
-				for m, _ := range matches {
+				for m := range matches {
 					gsp.SearchResults.Clear(m)
 				}
 				return
