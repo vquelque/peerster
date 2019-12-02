@@ -59,7 +59,7 @@ func (gsp *Gossiper) processFile(filename string) {
 	gsp.FileStorage.StoreFile(f, metafile)
 	fmt.Printf("File stored in memory. Name : %s.Metahash : %x\n", f.Name, f.MetafileHash)
 	//register name on blockchain
-	if gsp.AdditionalFlags.HW3ex2 {
+	if gsp.AdditionalFlags.HW3ex2 || gsp.AdditionalFlags.HW3ex3 {
 		gsp.PublishName(f)
 	}
 }

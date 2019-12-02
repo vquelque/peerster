@@ -19,14 +19,15 @@ type PendingTLC struct {
 }
 
 type PendingBlocks struct {
-	PendingBlocks    []*message.BlockPublish
-	AllowedToPublish chan bool
-	Lock             sync.RWMutex
+	PendingBlocks []*message.BlockPublish
+	ConfirmedTLC  chan *message.TLCMessage
+	Lock          sync.RWMutex
 }
 
 type TLCRoundVector struct {
 	TLCRoundForPeer   map[string]uint32
 	TLCProofsForRound []*message.TLCMessage
+	allowedForRound   bool
 	Lock              sync.RWMutex
 	myTime            uint32
 }
@@ -42,8 +43,8 @@ type Blockchain struct {
 func InitBlockchain() *Blockchain {
 	blck := &Blocks{Blocks: make(map[utils.SHA256]*message.BlockPublish)}
 	pTLC := &PendingTLC{PendingTLC: make(map[utils.SHA256]*message.TLCMessage)}
-	pBlocks := &PendingBlocks{PendingBlocks: make([]*message.BlockPublish, 0), AllowedToPublish: make(chan bool)}
-	tRV := &TLCRoundVector{TLCRoundForPeer: make(map[string]uint32, 0), TLCProofsForRound: make([]*message.TLCMessage, 0)}
+	pBlocks := &PendingBlocks{PendingBlocks: make([]*message.BlockPublish, 0), ConfirmedTLC: make(chan *message.TLCMessage)}
+	tRV := &TLCRoundVector{TLCRoundForPeer: make(map[string]uint32, 0), allowedForRound: true}
 	nextRound := make(chan bool)
 	return &Blockchain{Blocks: blck, PendingTLC: pTLC, PendingBlocks: pBlocks, TLCRoundVector: tRV, NextRound: nextRound}
 }
@@ -80,6 +81,13 @@ func (b *Blockchain) AddPendingTLCIfValid(tlc *message.TLCMessage) bool {
 	return true
 }
 
+func (b *Blockchain) RemovePendingTLC(tlc *message.TLCMessage) {
+	b.PendingTLC.Lock.Lock()
+	defer b.PendingTLC.Lock.Unlock()
+	hash := tlc.TxBlock.Transaction.Hash()
+	delete(b.PendingTLC.PendingTLC, hash)
+}
+
 func (b *Blockchain) IsPending(tlc *message.TLCMessage) bool {
 	b.PendingTLC.Lock.RLock()
 	defer b.PendingTLC.Lock.RUnlock()
@@ -104,7 +112,7 @@ func (b *Blockchain) IsValid(hash utils.SHA256) bool {
 	return !exists && !pending
 }
 
-func (b *Blockchain) Accept(tlc *message.TLCMessage, self bool) *message.BlockPublish {
+func (b *Blockchain) Accept(tlc *message.TLCMessage) *message.BlockPublish {
 	b.Blocks.Lock.Lock()
 	defer b.Blocks.Lock.Unlock()
 	b.PendingTLC.Lock.Lock()
@@ -116,7 +124,6 @@ func (b *Blockchain) Accept(tlc *message.TLCMessage, self bool) *message.BlockPu
 		fmt.Printf("PENDING TRANSACTION FOUND FOR TLC WITH HASH %x. ACCEPTING BLOCK\n", hash)
 		b.Blocks.Blocks[hash] = &tlc.TxBlock
 		delete(b.PendingTLC.PendingTLC, hash)
-		b.AdvanceRoundForPeer(tlc.Origin, tlc, self)
 	}
 	return b.Blocks.Blocks[hash]
 }
@@ -147,15 +154,18 @@ func (b *Blockchain) ShiftPendingBlock() *message.BlockPublish {
 	return pb
 }
 
-func (b *Blockchain) AdvanceRoundForPeer(peer string, proof *message.TLCMessage, resetProof bool) {
+func (b *Blockchain) AdvanceRoundForPeer(peer string, reset bool) {
 	b.TLCRoundVector.Lock.Lock()
 	defer b.TLCRoundVector.Lock.Unlock()
-	b.TLCRoundVector.TLCRoundForPeer[peer]++
-	b.TLCRoundVector.TLCProofsForRound = append(b.TLCRoundVector.TLCProofsForRound, proof)
-	if resetProof {
-		// reset the proofs for next round
-		b.TLCRoundVector.TLCProofsForRound = make([]*message.TLCMessage, 0)
+	_, p := b.TLCRoundVector.TLCRoundForPeer[peer]
+	if !p {
+		b.TLCRoundVector.TLCRoundForPeer[peer] = 0
 	}
+	if reset {
+		b.TLCRoundVector.allowedForRound = true
+	}
+	b.TLCRoundVector.TLCRoundForPeer[peer] = b.TLCRoundVector.TLCRoundForPeer[peer] + 1
+
 }
 
 func (b *Blockchain) GetRoundForPeer(peer string) uint32 {
@@ -164,20 +174,14 @@ func (b *Blockchain) GetRoundForPeer(peer string) uint32 {
 	return b.TLCRoundVector.TLCRoundForPeer[peer]
 }
 
-func (b *Blockchain) CheckAllowedToPublish(peerNumber uint64, peer string) bool {
+func (b *Blockchain) CheckAllowedToPublish() bool {
 	b.TLCRoundVector.Lock.RLock()
 	defer b.TLCRoundVector.Lock.RUnlock()
-	currRound := b.TLCRoundVector.TLCRoundForPeer[peer]
-	var pNum uint64 = 0
-	for p, round := range b.TLCRoundVector.TLCRoundForPeer {
-		if p != peer && round >= currRound {
-			pNum++
-		}
-	}
-	allowed := (pNum > peerNumber/2) || currRound == 0
-	return allowed
+	return b.TLCRoundVector.allowedForRound
 }
 
-func (b *Blockchain) GetProofForCurrRound() []*message.TLCMessage {
-	return b.TLCRoundVector.TLCProofsForRound
+func (b *Blockchain) Published() {
+	b.TLCRoundVector.Lock.Lock()
+	defer b.TLCRoundVector.Lock.Unlock()
+	b.TLCRoundVector.allowedForRound = false
 }
