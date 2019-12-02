@@ -2,6 +2,7 @@ package message
 
 import (
 	"crypto/sha256"
+	"encoding/binary"
 	"fmt"
 
 	"github.com/vquelque/Peerster/constant"
@@ -190,12 +191,13 @@ func NewSearchReply(origin string, destination string, hoplimit uint32, results 
 	return sr
 }
 
-func NewTLCMessage(origin string, id uint32, txBlock *BlockPublish, confirmed int) *TLCMessage {
+func NewTLCMessage(origin string, id uint32, txBlock *BlockPublish, confirmed int, fitness float32) *TLCMessage {
 	return &TLCMessage{
 		Origin:    origin,
 		ID:        id,
 		Confirmed: confirmed,
 		TxBlock:   *txBlock,
+		Fitness:   fitness,
 	}
 }
 
@@ -217,10 +219,10 @@ func (msg *PrivateMessage) String() string {
 		msg.Origin, msg.HopLimit, msg.Text)
 }
 
-func (tx *TxPublish) Hash() utils.SHA256 {
-	hash := sha256.Sum256([]byte(tx.Name))
-	return hash
-}
+// func (tx *TxPublish) Hash() utils.SHA256 {
+// 	hash := sha256.Sum256([]byte(tx.Name))
+// 	return hash
+// }
 
 // GetDetails return underlying origin,ID and if rumorPacket is a rumorMsg or a TLCMessage
 func (pkt *RumorPacket) GetDetails() (string, uint32, bool) {
@@ -263,4 +265,23 @@ func (pkt *RumorPacket) String(origin string) string {
 		str = pkt.TLCMessage.String(origin)
 	}
 	return str
+}
+
+func (b *BlockPublish) Hash() (out [32]byte) {
+	h := sha256.New()
+	h.Write(b.PrevHash[:])
+	th := b.Transaction.Hash()
+	h.Write(th[:])
+	copy(out[:], h.Sum(nil))
+	return
+}
+
+func (t *TxPublish) Hash() (out [32]byte) {
+	h := sha256.New()
+	binary.Write(h, binary.LittleEndian,
+		uint32(len(t.Name)))
+	h.Write([]byte(t.Name))
+	h.Write(t.MetafileHah)
+	copy(out[:], h.Sum(nil))
+	return
 }

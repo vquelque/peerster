@@ -12,6 +12,7 @@ type SHA256 = [32]byte
 type AdditionalFlags struct {
 	HW3ex2          bool
 	HW3ex3          bool
+	HW3ex4          bool
 	PeersNumber     uint64
 	StubbornTimeout int
 	AckAll          bool

@@ -23,6 +23,7 @@ func main() {
 	rtimerFlag := flag.Int("rtimer", 0, "time between sending two route rumor messages")
 	hw3ex2Flag := flag.Bool("hw3ex2", false, "HW3 EX2 Blockchain flag")
 	hw3ex3Flag := flag.Bool("hw3ex3", false, "HW3 EX3 Blockchain flag")
+	hw3ex4Flag := flag.Bool("hw3ex4", false, "HW3 EX4 Blockchain flag")
 	ackAfllFlag := flag.Bool("ackAll", false, "ACKALL Flag")
 	peersNumber := flag.Uint64("N", 0, "Number of peers in the Network")
 	stubbornTimeoutFlag := flag.Int("stubbornTimeout", 0, "stubbornTimeout")
@@ -47,7 +48,7 @@ func main() {
 	} else {
 		hoplimit = uint32(*hoplimitFlag)
 	}
-	additionalFlags := &utils.AdditionalFlags{HW3ex2: *hw3ex2Flag, PeersNumber: *peersNumber, StubbornTimeout: stubbornTimeout, HW3ex3: *hw3ex3Flag, AckAll: *ackAfllFlag}
+	additionalFlags := &utils.AdditionalFlags{HW3ex2: *hw3ex2Flag, PeersNumber: *peersNumber, StubbornTimeout: stubbornTimeout, HW3ex3: *hw3ex3Flag, AckAll: *ackAfllFlag, HW3ex4: *hw3ex4Flag}
 	gossiper := gossiper.NewGossiper(*gossipAddr, *name, *uiPort, *peersList, *simple, antiEntropyTimer, rtimer, hoplimit, additionalFlags)
 	//starts UI server if flag is set
 	if *startUIServer {

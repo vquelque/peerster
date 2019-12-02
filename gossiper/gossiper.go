@@ -275,6 +275,6 @@ func (gsp *Gossiper) Start() {
 		gsp.startRoutingMessageHandler()
 	}
 	if gsp.AdditionalFlags.HW3ex2 || gsp.AdditionalFlags.HW3ex3 {
-		gsp.StartBlockPublishHandler()
+		gsp.StartTLCRoundHandler()
 	}
 }

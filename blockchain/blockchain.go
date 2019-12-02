@@ -185,3 +185,13 @@ func (b *Blockchain) Published() {
 	defer b.TLCRoundVector.Lock.Unlock()
 	b.TLCRoundVector.allowedForRound = false
 }
+
+func (b *Blockchain) ResetRoundForPeers(currRound uint32) {
+	b.TLCRoundVector.Lock.Lock()
+	defer b.TLCRoundVector.Lock.Unlock()
+	for p, r := range b.TLCRoundVector.TLCRoundForPeer {
+		if r < currRound {
+			b.TLCRoundVector.TLCRoundForPeer[p] = currRound
+		}
+	}
+}
