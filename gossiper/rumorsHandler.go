@@ -7,7 +7,6 @@ import (
 
 	"github.com/vquelque/Peerster/constant"
 	"github.com/vquelque/Peerster/message"
-	"github.com/vquelque/Peerster/vector"
 )
 
 // Procecces incoming rumor message/TLC packet.
@@ -140,7 +139,7 @@ func (gsp *Gossiper) coinFlip(rumor *message.RumorPacket, sender string) {
 }
 
 // Check if we are in sync with peer. Else, send the missing messages to the peer.
-func (gsp *Gossiper) synchronizeWithPeer(same bool, toAsk []vector.PeerStatus, toSend []vector.PeerStatus, peerAddr string) {
+func (gsp *Gossiper) synchronizeWithPeer(same bool, toAsk []message.PeerStatus, toSend []message.PeerStatus, peerAddr string) {
 	if same {
 		fmt.Printf("IN SYNC WITH %s \n", peerAddr)
 		return

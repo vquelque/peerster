@@ -52,7 +52,7 @@ type Gossiper struct {
 type GossipPacket struct {
 	Simple        *message.SimpleMessage
 	RumorMessage  *message.RumorMessage
-	StatusPacket  *vector.StatusPacket
+	StatusPacket  *message.StatusPacket
 	Private       *message.PrivateMessage
 	DataRequest   *message.DataRequest
 	DataReply     *message.DataReply

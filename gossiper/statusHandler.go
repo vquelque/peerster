@@ -4,18 +4,18 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/vquelque/Peerster/vector"
+	"github.com/vquelque/Peerster/message"
 )
 
 // Sends a status packet to the given address.
 func (gsp *Gossiper) sendStatusPacket(addr string) {
 	sp := gsp.VectorClock.StatusPacket()
-	gp := &GossipPacket{StatusPacket: &sp}
+	gp := &GossipPacket{StatusPacket: sp}
 	gsp.send(gp, addr)
 }
 
 // Processes incoming status packets.
-func (gsp *Gossiper) processStatusPacket(sp *vector.StatusPacket, sender string) {
+func (gsp *Gossiper) processStatusPacket(sp *message.StatusPacket, sender string) {
 	fmt.Print(sp.StringStatusWithSender(sender))
 
 	//reset anti entropy timer

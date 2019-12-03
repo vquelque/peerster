@@ -7,7 +7,6 @@ import (
 
 	"github.com/vquelque/Peerster/constant"
 	"github.com/vquelque/Peerster/utils"
-	"github.com/vquelque/Peerster/vector"
 )
 
 // SimpleMessage represents a type of Peerster message containing only text.
@@ -28,6 +27,17 @@ type RumorMessage struct {
 type RumorPacket struct {
 	RumorMessage *RumorMessage
 	TLCMessage   *TLCMessage
+}
+
+//PeerStatus gives the next message ID to be received by a particular peer.
+type PeerStatus struct {
+	Identifier string
+	NextID     uint32
+}
+
+//StatusPacket is exchanged between peers to exchange their vector clocks.
+type StatusPacket struct {
+	Want []PeerStatus
 }
 
 //PrivateMessage between 2 peers
@@ -90,7 +100,7 @@ type TLCMessage struct {
 	ID          uint32
 	Confirmed   int
 	TxBlock     BlockPublish
-	VectorClock *vector.StatusPacket
+	VectorClock *StatusPacket
 	Fitness     float32
 }
 
@@ -112,6 +122,20 @@ func NewRumorMessage(origin string, ID uint32, text string) *RumorMessage {
 		ID:     ID,
 		Text:   text,
 	}
+}
+
+//Prints a PeerStatus message
+func (ps *PeerStatus) String() string {
+	return fmt.Sprintf("peer %s nextID %d", ps.Identifier, ps.NextID)
+}
+
+//StringStatusWithSender prints a StatusMessage with its sender
+func (msg *StatusPacket) StringStatusWithSender(sender string) string {
+	str := fmt.Sprintf("STATUS from %s \n", sender)
+	for _, element := range msg.Want {
+		str += fmt.Sprintf("%s \n", element.String())
+	}
+	return str
 }
 
 //NewPrivateMessage creates a new private message for peer dest (dest is peer identifier not address).
@@ -191,13 +215,14 @@ func NewSearchReply(origin string, destination string, hoplimit uint32, results 
 	return sr
 }
 
-func NewTLCMessage(origin string, id uint32, txBlock *BlockPublish, confirmed int, fitness float32) *TLCMessage {
+func NewTLCMessage(origin string, id uint32, txBlock *BlockPublish, confirmed int, TLCStatusPkt *StatusPacket, fitness float32) *TLCMessage {
 	return &TLCMessage{
-		Origin:    origin,
-		ID:        id,
-		Confirmed: confirmed,
-		TxBlock:   *txBlock,
-		Fitness:   fitness,
+		Origin:      origin,
+		ID:          id,
+		Confirmed:   confirmed,
+		TxBlock:     *txBlock,
+		Fitness:     fitness,
+		VectorClock: TLCStatusPkt,
 	}
 }
 

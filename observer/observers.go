@@ -7,7 +7,6 @@ import (
 
 	"github.com/vquelque/Peerster/message"
 	"github.com/vquelque/Peerster/utils"
-	"github.com/vquelque/Peerster/vector"
 )
 
 // Observer structure used for callback to routine
@@ -51,7 +50,7 @@ func (obs *Observer) Unregister(sender string) {
 
 }
 
-func (obs *Observer) GetObserver(sp *vector.StatusPacket, peer string) chan bool {
+func (obs *Observer) GetObserver(sp *message.StatusPacket, peer string) chan bool {
 	obs.lock.RLock()
 	defer obs.lock.RUnlock()
 	for _, ps := range sp.Want {

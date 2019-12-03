@@ -9,8 +9,9 @@ import (
 )
 
 type Blocks struct {
-	Blocks map[utils.SHA256]*message.BlockPublish
-	Lock   sync.RWMutex
+	Blocks   map[utils.SHA256]*message.BlockPublish
+	PrevHash utils.SHA256
+	Lock     sync.RWMutex
 }
 
 type PendingTLC struct {
@@ -41,7 +42,7 @@ type Blockchain struct {
 }
 
 func InitBlockchain() *Blockchain {
-	blck := &Blocks{Blocks: make(map[utils.SHA256]*message.BlockPublish)}
+	blck := &Blocks{Blocks: make(map[utils.SHA256]*message.BlockPublish), PrevHash: utils.SHA256Zeros()}
 	pTLC := &PendingTLC{PendingTLC: make(map[utils.SHA256]*message.TLCMessage)}
 	pBlocks := &PendingBlocks{PendingBlocks: make([]*message.BlockPublish, 0), ConfirmedTLC: make(chan *message.TLCMessage)}
 	tRV := &TLCRoundVector{TLCRoundForPeer: make(map[string]uint32, 0), allowedForRound: true}
@@ -49,13 +50,13 @@ func InitBlockchain() *Blockchain {
 	return &Blockchain{Blocks: blck, PendingTLC: pTLC, PendingBlocks: pBlocks, TLCRoundVector: tRV, NextRound: nextRound}
 }
 
-func NewBlockPublish(filename string, filesize int64, metahash utils.SHA256) *message.BlockPublish {
+func NewBlockPublish(filename string, filesize int64, metahash utils.SHA256, prevHash utils.SHA256) *message.BlockPublish {
 	tx := message.TxPublish{
 		Name:        filename,
 		Size:        filesize,
 		MetafileHah: metahash[:],
 	}
-	return &message.BlockPublish{Transaction: tx}
+	return &message.BlockPublish{Transaction: tx, PrevHash: prevHash}
 }
 
 func NewTLCAck(origin string, destination string, id uint32, hoplimit uint32) message.TLCAck {
@@ -123,6 +124,7 @@ func (b *Blockchain) Accept(tlc *message.TLCMessage) *message.BlockPublish {
 		// tlc.Confirmed = true
 		fmt.Printf("PENDING TRANSACTION FOUND FOR TLC WITH HASH %x. ACCEPTING BLOCK\n", hash)
 		b.Blocks.Blocks[hash] = &tlc.TxBlock
+		b.Blocks.PrevHash = hash
 		delete(b.PendingTLC.PendingTLC, hash)
 	}
 	return b.Blocks.Blocks[hash]
@@ -194,4 +196,22 @@ func (b *Blockchain) ResetRoundForPeers(currRound uint32) {
 			b.TLCRoundVector.TLCRoundForPeer[p] = currRound
 		}
 	}
+}
+
+func (b *Blockchain) GetPreviousHash() utils.SHA256 {
+	b.Blocks.Lock.RLock()
+	defer b.Blocks.Lock.RUnlock()
+	return b.Blocks.PrevHash
+}
+
+func (b *Blockchain) TLCRoundStatus() *message.StatusPacket {
+	sp := &message.StatusPacket{}
+	sp.Want = make([]message.PeerStatus, 0)
+	b.TLCRoundVector.Lock.RLock()
+	defer b.TLCRoundVector.Lock.RUnlock()
+	for peer, rID := range b.TLCRoundVector.TLCRoundForPeer {
+		ps := message.PeerStatus{peer, rID}
+		sp.Want = append(sp.Want, ps)
+	}
+	return sp
 }

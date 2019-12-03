@@ -87,3 +87,8 @@ func Contains(s []string, e string) bool {
 	}
 	return false
 }
+
+func SHA256Zeros() SHA256 {
+	out := [32]byte{00000000000000000000000000000000}
+	return out
+}

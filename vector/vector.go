@@ -1,20 +1,10 @@
 package vector
 
 import (
-	"fmt"
 	"sync"
+
+	"github.com/vquelque/Peerster/message"
 )
-
-//PeerStatus gives the next message ID to be received by a particular peer.
-type PeerStatus struct {
-	Identifier string
-	NextID     uint32
-}
-
-//StatusPacket is exchanged between peers to exchange their vector clocks.
-type StatusPacket struct {
-	Want []PeerStatus
-}
 
 // Vector clock.
 // We use ID for messages starting at 0
@@ -121,20 +111,20 @@ func (vec *Vector) IncrementTLCIDForPeer(peer string) uint32 {
 }
 
 // StatusPacket returns the status packet for a given peer.
-func (vec *Vector) StatusPacket() StatusPacket {
-	sp := StatusPacket{}
-	sp.Want = make([]PeerStatus, 0)
+func (vec *Vector) StatusPacket() *message.StatusPacket {
+	sp := &message.StatusPacket{}
+	sp.Want = make([]message.PeerStatus, 0)
 	vec.peersLock.RLock()
 	defer vec.peersLock.RUnlock()
 	for peer, mID := range vec.nextMessage {
-		ps := PeerStatus{peer, mID}
+		ps := message.PeerStatus{peer, mID}
 		sp.Want = append(sp.Want, ps)
 	}
 	return sp
 }
 
 // UpdateVectorClock updates the whole vector clock with the given status packet.
-func (vec *Vector) UpdateVectorClock(sp StatusPacket) {
+func (vec *Vector) UpdateVectorClock(sp message.StatusPacket) {
 	vec.peersLock.Lock()
 	defer vec.peersLock.Unlock()
 	for _, peerStatus := range sp.Want {
@@ -149,9 +139,9 @@ func (vec *Vector) UpdateVectorClock(sp StatusPacket) {
 // CompareWithStatusPacket compares and returns the difference between
 // the current vector clock and the status paket given as arguemnt.
 // https://siongui.github.io/2018/03/14/go-set-difference-of-two-arrays/
-func (vec *Vector) CompareWithStatusPacket(otherPeerStatus StatusPacket) (same bool, toAsk []PeerStatus, toSend []PeerStatus) {
-	toSend = make([]PeerStatus, 0)
-	toAsk = make([]PeerStatus, 0)
+func (vec *Vector) CompareWithStatusPacket(otherPeerStatus message.StatusPacket) (same bool, toAsk []message.PeerStatus, toSend []message.PeerStatus) {
+	toSend = make([]message.PeerStatus, 0)
+	toAsk = make([]message.PeerStatus, 0)
 
 	vec.peersLock.RLock()
 	defer vec.peersLock.RUnlock()
@@ -162,7 +152,7 @@ func (vec *Vector) CompareWithStatusPacket(otherPeerStatus StatusPacket) (same b
 	for _, status := range otherPeerStatus.Want {
 		m[status.Identifier] = true
 		next, found := vec.nextMessage[status.Identifier]
-		ps := PeerStatus{status.Identifier, next}
+		ps := message.PeerStatus{status.Identifier, next}
 
 		if found {
 			if next > status.NextID {
@@ -177,24 +167,10 @@ func (vec *Vector) CompareWithStatusPacket(otherPeerStatus StatusPacket) (same b
 	// second pass : add the peers that are only in this status vector but not in the other one.
 	for peer := range vec.nextMessage {
 		if !m[peer] {
-			ps := PeerStatus{peer, 1}
+			ps := message.PeerStatus{peer, 1}
 			toSend = append(toSend, ps)
 		}
 	}
 	same = len(toSend) == 0 && len(toAsk) == 0
 	return same, toAsk, toSend
-}
-
-//Prints a PeerStatus message
-func (ps *PeerStatus) String() string {
-	return fmt.Sprintf("peer %s nextID %d", ps.Identifier, ps.NextID)
-}
-
-//StringStatusWithSender prints a StatusMessage with its sender
-func (msg *StatusPacket) StringStatusWithSender(sender string) string {
-	str := fmt.Sprintf("STATUS from %s \n", sender)
-	for _, element := range msg.Want {
-		str += fmt.Sprintf("%s \n", element.String())
-	}
-	return str
 }

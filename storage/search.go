@@ -80,6 +80,26 @@ func (sr *SearchResults) IsComplete(metahash utils.SHA256) bool {
 	return true
 }
 
+func (sr *SearchResults) CountFullMatch(metahash utils.SHA256) uint64 {
+	sr.lock.RLock()
+	defer sr.lock.RUnlock()
+	candidate := sr.results[metahash][0]
+	var nMatch uint64 = 0
+	for _, peer := range candidate {
+		match := true
+		for _, c := range sr.results[metahash] {
+			if !utils.Contains(c, peer) {
+				match = false
+				break
+			}
+		}
+		if match == true {
+			nMatch++
+		}
+	}
+	return nMatch
+}
+
 func (sr *SearchResults) GetChunksSourceMap(metahash utils.SHA256) map[uint64][]string {
 	sr.lock.RLock()
 	defer sr.lock.RUnlock()
