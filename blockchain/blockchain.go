@@ -1,7 +1,7 @@
 package blockchain
 
 import (
-	"fmt"
+	"log"
 	"sync"
 
 	"github.com/vquelque/Peerster/message"
@@ -15,8 +15,9 @@ type Blocks struct {
 }
 
 type PendingTLC struct {
-	PendingTLC map[utils.SHA256]*message.TLCMessage
-	Lock       sync.RWMutex
+	PendingTLC        map[utils.SHA256]*message.TLCMessage
+	PengindTLCForPeer map[string][]*message.TLCMessage
+	Lock              sync.RWMutex
 }
 
 type PendingBlocks struct {
@@ -39,15 +40,16 @@ type Blockchain struct {
 	PendingBlocks  *PendingBlocks
 	TLCRoundVector *TLCRoundVector
 	NextRound      chan bool
+	identifier     string
 }
 
-func InitBlockchain() *Blockchain {
+func InitBlockchain(identifier string) *Blockchain {
 	blck := &Blocks{Blocks: make(map[utils.SHA256]*message.BlockPublish), PrevHash: utils.SHA256Zeros()}
-	pTLC := &PendingTLC{PendingTLC: make(map[utils.SHA256]*message.TLCMessage)}
+	pTLC := &PendingTLC{PendingTLC: make(map[utils.SHA256]*message.TLCMessage), PengindTLCForPeer: make(map[string][]*message.TLCMessage)}
 	pBlocks := &PendingBlocks{PendingBlocks: make([]*message.BlockPublish, 0), ConfirmedTLC: make(chan *message.TLCMessage)}
 	tRV := &TLCRoundVector{TLCRoundForPeer: make(map[string]uint32, 0), allowedForRound: true}
 	nextRound := make(chan bool)
-	return &Blockchain{Blocks: blck, PendingTLC: pTLC, PendingBlocks: pBlocks, TLCRoundVector: tRV, NextRound: nextRound}
+	return &Blockchain{Blocks: blck, PendingTLC: pTLC, PendingBlocks: pBlocks, TLCRoundVector: tRV, NextRound: nextRound, identifier: identifier}
 }
 
 func NewBlockPublish(filename string, filesize int64, metahash utils.SHA256, prevHash utils.SHA256) *message.BlockPublish {
@@ -120,9 +122,7 @@ func (b *Blockchain) Accept(tlc *message.TLCMessage) *message.BlockPublish {
 	defer b.PendingTLC.Lock.Unlock()
 	hash := tlc.TxBlock.Transaction.Hash()
 	if _, pending := b.PendingTLC.PendingTLC[hash]; pending {
-		//for mapping in rumor storages
-		// tlc.Confirmed = true
-		fmt.Printf("PENDING TRANSACTION FOUND FOR TLC WITH HASH %x. ACCEPTING BLOCK\n", hash)
+		log.Printf("PENDING TRANSACTION FOUND FOR TLC WITH HASH %x. ACCEPTING BLOCK\n", hash)
 		b.Blocks.Blocks[hash] = &tlc.TxBlock
 		b.Blocks.PrevHash = hash
 		delete(b.PendingTLC.PendingTLC, hash)
@@ -214,4 +214,20 @@ func (b *Blockchain) TLCRoundStatus() *message.StatusPacket {
 		sp.Want = append(sp.Want, ps)
 	}
 	return sp
+}
+
+func (b *Blockchain) IsFowardRumor(tlcStatus *message.StatusPacket) bool {
+	b.TLCRoundVector.Lock.RLock()
+	defer b.TLCRoundVector.Lock.RUnlock()
+	if b.TLCRoundVector.TLCRoundForPeer[b.identifier] == 0 {
+		return true
+	}
+	for _, round := range tlcStatus.Want {
+		if round.Identifier == b.identifier {
+			if round.NextID >= b.TLCRoundVector.TLCRoundForPeer[b.identifier] {
+				return true
+			}
+		}
+	}
+	return false
 }

@@ -44,7 +44,7 @@ func (gsp *Gossiper) processRumorPacket(pkt *message.RumorPacket, sender string)
 			gsp.UIStorage.AppendRumorAsync(pkt.RumorMessage)
 		}
 		if !rumor && pkt.TLCMessage.Confirmed > 0 {
-			// TLC Messqge with vector clock satisfied
+			// TLC Message
 			gsp.Blockchain.Accept(pkt.TLCMessage)
 			gsp.Blockchain.PendingBlocks.ConfirmedTLC <- pkt.TLCMessage
 		}

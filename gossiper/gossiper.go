@@ -86,7 +86,7 @@ func NewGossiper(address string, name string, uiPort int, peersList string, simp
 	searchResults := storage.NewSearchResult()
 	toDownload := storage.NewToDownload()
 	pendingSearchRequest := storage.NewPendingRequests()
-	blockchain := blockchain.InitBlockchain()
+	blockchain := blockchain.InitBlockchain(name)
 	tlcStorage := storage.NewTLCMessageStorage()
 	waitingForTLCAck := observer.InitTLCAckObserver()
 

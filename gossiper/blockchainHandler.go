@@ -39,7 +39,7 @@ func (gsp *Gossiper) StartTLCRoundHandler() {
 				if uint64(len(TLCProofsForRound)) > gsp.AdditionalFlags.PeersNumber/2 {
 					gsp.Blockchain.AdvanceRoundForPeer(gsp.Name, true)
 					fmt.Printf("ADVANCING TO round ​%d BASED ON CONFIRMED MESSAGES %s\n", gsp.Blockchain.GetRoundForPeer(gsp.Name), ProofsForRound(TLCProofsForRound))
-					gsp.Blockchain.ResetRoundForPeers(gsp.Blockchain.GetRoundForPeer(gsp.Name))
+					// gsp.Blockchain.ResetRoundForPeers(gsp.Blockchain.GetRoundForPeer(gsp.Name))
 					TLCProofsForRound = make([]*message.TLCMessage, 0)
 					select {
 					//non blocking
@@ -118,7 +118,8 @@ func (gsp *Gossiper) processTLCMessage(tlcmsg *message.TLCMessage, sender string
 	valid := gsp.Blockchain.AddPendingTLCIfValid(tlcmsg)
 	//send ACK to origin
 	if valid && tlcmsg.Origin != gsp.Name {
-		if gsp.AdditionalFlags.HW3ex2 || gsp.Blockchain.GetRoundForPeer(tlcmsg.Origin) >= gsp.Blockchain.GetRoundForPeer(gsp.Name) || gsp.AdditionalFlags.AckAll || gsp.Blockchain.GetRoundForPeer(tlcmsg.Origin) == 0 {
+		if gsp.AdditionalFlags.HW3ex2 || gsp.Blockchain.IsFowardRumor(tlcmsg.VectorClock) {
+			//gsp.Blockchain.GetRoundForPeer(tlcmsg.Origin) >= gsp.Blockchain.GetRoundForPeer(gsp.Name) || gsp.AdditionalFlags.AckAll || gsp.Blockchain.GetRoundForPeer(tlcmsg.Origin) == 0
 			ack := blockchain.NewTLCAck(gsp.Name, tlcmsg.Origin, tlcmsg.ID, gsp.HopLimit)
 			fmt.Printf("SENDING ACK origin %s ID %d \n", gsp.Name, tlcmsg.ID)
 			gsp.sendTLACK(ack)
