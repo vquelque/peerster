@@ -29,17 +29,20 @@ func (gsp *Gossiper) PublishName(file *storage.File) {
 func (gsp *Gossiper) StartTLCRoundHandler() {
 	go func() {
 		TLCProofsForRound := make([]*message.TLCMessage, 0)
+		selfTLCAccepted := false
 		for {
 			select {
 			case confirmedTLC := <-gsp.Blockchain.PendingBlocks.ConfirmedTLC:
 				TLCProofsForRound = append(TLCProofsForRound, confirmedTLC)
-				if confirmedTLC.Origin != gsp.Name {
-					gsp.Blockchain.AdvanceRoundForPeer(confirmedTLC.Origin, false)
+				if confirmedTLC.Origin == gsp.Name {
+					selfTLCAccepted = true
 				}
 				if uint64(len(TLCProofsForRound)) > gsp.AdditionalFlags.PeersNumber/2 {
-					gsp.Blockchain.AdvanceRoundForPeer(gsp.Name, true)
+					gsp.Blockchain.ResetAllowedForRound()
+					if !selfTLCAccepted {
+						gsp.Blockchain.AdvanceRoundForPeer(gsp.Name)
+					}
 					fmt.Printf("ADVANCING TO round ​%d BASED ON CONFIRMED MESSAGES %s\n", gsp.Blockchain.GetRoundForPeer(gsp.Name), ProofsForRound(TLCProofsForRound))
-					// gsp.Blockchain.ResetRoundForPeers(gsp.Blockchain.GetRoundForPeer(gsp.Name))
 					TLCProofsForRound = make([]*message.TLCMessage, 0)
 					select {
 					//non blocking
@@ -94,6 +97,7 @@ func (gsp *Gossiper) HandleBlockPublish(bp *message.BlockPublish, fitness float3
 			if uint64(len(acknowledged)) > majority {
 				// Broadcast confirmed TLC message
 				nextID := gsp.VectorClock.NextMessageForPeer(gsp.Name)
+				gsp.Blockchain.AdvanceRoundForPeer(gsp.Name)
 				TLCStatusPkt := gsp.Blockchain.TLCRoundStatus()
 				confirmedTLC := message.NewTLCMessage(gsp.Name, nextID, &TLC.TxBlock, int(TLC.ID), TLCStatusPkt, TLC.Fitness)
 				fmt.Printf("RE-BROADCAST ID %d WITNESSES %s\n", TLC.ID, strings.Join(acknowledged, ","))
@@ -112,16 +116,16 @@ func (gsp *Gossiper) HandleBlockPublish(bp *message.BlockPublish, fitness float3
 func (gsp *Gossiper) processTLCMessage(tlcmsg *message.TLCMessage, sender string) {
 	rp := &message.RumorPacket{TLCMessage: tlcmsg}
 	gsp.processRumorPacket(rp, sender)
+	fmt.Printf("%v", tlcmsg.VectorClock.Want)
 	if tlcmsg.Confirmed > 0 {
 		return
 	}
 	valid := gsp.Blockchain.AddPendingTLCIfValid(tlcmsg)
 	//send ACK to origin
 	if valid && tlcmsg.Origin != gsp.Name {
-		if gsp.AdditionalFlags.HW3ex2 || gsp.Blockchain.IsFowardRumor(tlcmsg.VectorClock) {
-			//gsp.Blockchain.GetRoundForPeer(tlcmsg.Origin) >= gsp.Blockchain.GetRoundForPeer(gsp.Name) || gsp.AdditionalFlags.AckAll || gsp.Blockchain.GetRoundForPeer(tlcmsg.Origin) == 0
+		if gsp.AdditionalFlags.HW3ex2 || gsp.Blockchain.IsFowardRumor(tlcmsg.VectorClock) || gsp.AdditionalFlags.AckAll {
 			ack := blockchain.NewTLCAck(gsp.Name, tlcmsg.Origin, tlcmsg.ID, gsp.HopLimit)
-			fmt.Printf("SENDING ACK origin %s ID %d \n", gsp.Name, tlcmsg.ID)
+			// fmt.Printf("SENDING ACK origin %s ID %d \n", gsp.Name, tlcmsg.ID)
 			gsp.sendTLACK(ack)
 		}
 	}
@@ -144,6 +148,7 @@ func (gsp *Gossiper) processTLCAck(tlcack message.TLCAck) {
 func (gsp *Gossiper) sendTLACK(ack message.TLCAck) {
 	ack.HopLimit = ack.HopLimit - 1
 	gp := &GossipPacket{Ack: &ack}
+	fmt.Printf("SENDING TLC ACK TO %s \n", ack.Destination)
 	nextHopAddr := gsp.Routing.GetRoute(ack.Destination)
 	if nextHopAddr != "" {
 		if ack.HopLimit > 0 {
@@ -163,44 +168,44 @@ func ProofsForRound(proofs []*message.TLCMessage) string {
 	return str
 }
 
-func (gsp *Gossiper) StartQSCRoundHandler() {
-	go func() {
-		TLCProofsForRound := make([]*message.TLCMessage, 0)
-		selectedBp := &message.TLCMessage{Fitness: 0}
-		var pendingTransation utils.SHA256
-		round := 0
-		for {
-			select {
-			case confirmedTLC := <-gsp.Blockchain.PendingBlocks.ConfirmedTLC:
-				TLCProofsForRound = append(TLCProofsForRound, confirmedTLC)
-				if confirmedTLC.Origin != gsp.Name {
-					gsp.Blockchain.AdvanceRoundForPeer(confirmedTLC.Origin, false)
-					if confirmedTLC.Fitness >= selectedBp.Fitness && confirmedTLC.TxBlock.Hash() == pendingTransation {
-						selectedBp = confirmedTLC
-					}
-				}
-				if uint64(len(TLCProofsForRound)) > gsp.AdditionalFlags.PeersNumber/2 {
-					switch round {
-					case 0:
-						round++
-						gsp.Blockchain.AdvanceRoundForPeer(gsp.Name, false)
-						fmt.Printf("ADVANCING TO round ​%d BASED ON CONFIRMED MESSAGES %s\n", gsp.Blockchain.GetRoundForPeer(gsp.Name), ProofsForRound(TLCProofsForRound))
-						TLCProofsForRound = make([]*message.TLCMessage, 0)
-						go gsp.HandleBlockPublish(&selectedBp.TxBlock, selectedBp.Fitness)
-					case 1:
-						round = 0
-						gsp.Blockchain.AdvanceRoundForPeer(gsp.Name,true)
-						fmt.Printf("ADVANCING TO round ​%d BASED ON CONFIRMED MESSAGES %s\n", gsp.Blockchain.GetRoundForPeer(gsp.Name), ProofsForRound(TLCProofsForRound))
-						TLCProofsForRound = make([]*message.TLCMessage, 0)
-						go gsp.HandleBlockPublish(&selectedBp.TxBlock, selectedBp.Fitness)			
-				}
-				if gsp.Blockchain.CheckAllowedToPublish() && gsp.Blockchain.HasPendingBlocks() {
-					// start QLC round
-					fitness := rand.Float32()
-					go gsp.HandleBlockPublish(gsp.Blockchain.ShiftPendingBlock(), fitness)
+// func (gsp *Gossiper) StartQSCRoundHandler() {
+// 	go func() {
+// 		TLCProofsForRound := make([]*message.TLCMessage, 0)
+// 		selectedBp := &message.TLCMessage{Fitness: 0}
+// 		var pendingTransation utils.SHA256
+// 		round := 0
+// 		for {
+// 			select {
+// 			case confirmedTLC := <-gsp.Blockchain.PendingBlocks.ConfirmedTLC:
+// 				TLCProofsForRound = append(TLCProofsForRound, confirmedTLC)
+// 				if confirmedTLC.Origin != gsp.Name {
+// 					gsp.Blockchain.AdvanceRoundForPeer(confirmedTLC.Origin, false)
+// 					if confirmedTLC.Fitness >= selectedBp.Fitness && confirmedTLC.TxBlock.Hash() == pendingTransation {
+// 						selectedBp = confirmedTLC
+// 					}
+// 				}
+// 				if uint64(len(TLCProofsForRound)) > gsp.AdditionalFlags.PeersNumber/2 {
+// 					switch round {
+// 					case 0:
+// 						round++
+// 						gsp.Blockchain.AdvanceRoundForPeer(gsp.Name, false)
+// 						fmt.Printf("ADVANCING TO round ​%d BASED ON CONFIRMED MESSAGES %s\n", gsp.Blockchain.GetRoundForPeer(gsp.Name), ProofsForRound(TLCProofsForRound))
+// 						TLCProofsForRound = make([]*message.TLCMessage, 0)
+// 						go gsp.HandleBlockPublish(&selectedBp.TxBlock, selectedBp.Fitness)
+// 					case 1:
+// 						round = 0
+// 						gsp.Blockchain.AdvanceRoundForPeer(gsp.Name,true)
+// 						fmt.Printf("ADVANCING TO round ​%d BASED ON CONFIRMED MESSAGES %s\n", gsp.Blockchain.GetRoundForPeer(gsp.Name), ProofsForRound(TLCProofsForRound))
+// 						TLCProofsForRound = make([]*message.TLCMessage, 0)
+// 						go gsp.HandleBlockPublish(&selectedBp.TxBlock, selectedBp.Fitness)
+// 				}
+// 				if gsp.Blockchain.CheckAllowedToPublish() && gsp.Blockchain.HasPendingBlocks() {
+// 					// start QLC round
+// 					fitness := rand.Float32()
+// 					go gsp.HandleBlockPublish(gsp.Blockchain.ShiftPendingBlock(), fitness)
 
-				}
-			}
-		}
-	}()
-}
+// 				}
+// 			}
+// 		}
+// 	}()
+// }

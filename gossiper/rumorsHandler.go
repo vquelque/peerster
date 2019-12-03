@@ -46,7 +46,9 @@ func (gsp *Gossiper) processRumorPacket(pkt *message.RumorPacket, sender string)
 		if !rumor && pkt.TLCMessage.Confirmed > 0 {
 			// TLC Message
 			gsp.Blockchain.Accept(pkt.TLCMessage)
-			gsp.Blockchain.PendingBlocks.ConfirmedTLC <- pkt.TLCMessage
+		}
+		if !rumor && pkt.TLCMessage.Confirmed == -1 && origin != gsp.Name {
+			gsp.Blockchain.AdvanceRoundForPeer(origin)
 		}
 		if randPeer != "" {
 			gsp.rumormonger(pkt, randPeer)

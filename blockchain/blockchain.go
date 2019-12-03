@@ -1,7 +1,7 @@
 package blockchain
 
 import (
-	"log"
+	"fmt"
 	"sync"
 
 	"github.com/vquelque/Peerster/message"
@@ -15,9 +15,9 @@ type Blocks struct {
 }
 
 type PendingTLC struct {
-	PendingTLC        map[utils.SHA256]*message.TLCMessage
-	PengindTLCForPeer map[string][]*message.TLCMessage
-	Lock              sync.RWMutex
+	PendingTLC         map[utils.SHA256]*message.TLCMessage
+	PengindTLCForClock map[uint32]*message.TLCMessage
+	Lock               sync.RWMutex
 }
 
 type PendingBlocks struct {
@@ -45,7 +45,7 @@ type Blockchain struct {
 
 func InitBlockchain(identifier string) *Blockchain {
 	blck := &Blocks{Blocks: make(map[utils.SHA256]*message.BlockPublish), PrevHash: utils.SHA256Zeros()}
-	pTLC := &PendingTLC{PendingTLC: make(map[utils.SHA256]*message.TLCMessage), PengindTLCForPeer: make(map[string][]*message.TLCMessage)}
+	pTLC := &PendingTLC{PendingTLC: make(map[utils.SHA256]*message.TLCMessage), PengindTLCForClock: make(map[uint32]*message.TLCMessage)}
 	pBlocks := &PendingBlocks{PendingBlocks: make([]*message.BlockPublish, 0), ConfirmedTLC: make(chan *message.TLCMessage)}
 	tRV := &TLCRoundVector{TLCRoundForPeer: make(map[string]uint32, 0), allowedForRound: true}
 	nextRound := make(chan bool)
@@ -115,19 +115,32 @@ func (b *Blockchain) IsValid(hash utils.SHA256) bool {
 	return !exists && !pending
 }
 
-func (b *Blockchain) Accept(tlc *message.TLCMessage) *message.BlockPublish {
+func (b *Blockchain) TryAcceptTLC(tlc *message.TLCMessage) {
+	b.PendingTLC.Lock.Lock()
+	defer b.PendingTLC.Lock.Unlock()
+	id := b.IdForTLCVector(tlc.VectorClock)
+	b.PendingTLC.PengindTLCForClock[id] = tlc
+	// fmt.Printf("TRY ACCEPT THIS VEC : %v, OTHER VEC : %v\n", b.TLCRoundVector.TLCRoundForPeer, tlc.VectorClock)
+	b.Accept(tlc)
+}
+
+func (b *Blockchain) Accept(tlc *message.TLCMessage) {
 	b.Blocks.Lock.Lock()
 	defer b.Blocks.Lock.Unlock()
 	b.PendingTLC.Lock.Lock()
 	defer b.PendingTLC.Lock.Unlock()
 	hash := tlc.TxBlock.Transaction.Hash()
+	fmt.Printf("PENDING : %s \n", b.PendingTLC.PendingTLC[hash])
 	if _, pending := b.PendingTLC.PendingTLC[hash]; pending {
-		log.Printf("PENDING TRANSACTION FOUND FOR TLC WITH HASH %x. ACCEPTING BLOCK\n", hash)
+		fmt.Printf("ACCEPTING BLOCK WITH Hash : %x\n", hash)
+		select {
+		case b.PendingBlocks.ConfirmedTLC <- tlc:
+		default:
+		}
 		b.Blocks.Blocks[hash] = &tlc.TxBlock
 		b.Blocks.PrevHash = hash
 		delete(b.PendingTLC.PendingTLC, hash)
 	}
-	return b.Blocks.Blocks[hash]
 }
 
 func (b *Blockchain) GetTime(peer string) uint32 {
@@ -156,18 +169,20 @@ func (b *Blockchain) ShiftPendingBlock() *message.BlockPublish {
 	return pb
 }
 
-func (b *Blockchain) AdvanceRoundForPeer(peer string, reset bool) {
+func (b *Blockchain) AdvanceRoundForPeer(peer string) {
 	b.TLCRoundVector.Lock.Lock()
 	defer b.TLCRoundVector.Lock.Unlock()
 	_, p := b.TLCRoundVector.TLCRoundForPeer[peer]
 	if !p {
 		b.TLCRoundVector.TLCRoundForPeer[peer] = 0
 	}
-	if reset {
-		b.TLCRoundVector.allowedForRound = true
-	}
 	b.TLCRoundVector.TLCRoundForPeer[peer] = b.TLCRoundVector.TLCRoundForPeer[peer] + 1
+}
 
+func (b *Blockchain) ResetAllowedForRound() {
+	b.TLCRoundVector.Lock.Lock()
+	defer b.TLCRoundVector.Lock.Unlock()
+	b.TLCRoundVector.allowedForRound = true
 }
 
 func (b *Blockchain) GetRoundForPeer(peer string) uint32 {
@@ -260,4 +275,12 @@ func (b *Blockchain) IsInSync(tlcStatus *message.StatusPacket) bool {
 		}
 	}
 	return true
+}
+
+func (b *Blockchain) IdForTLCVector(sp *message.StatusPacket) uint32 {
+	var round uint32 = 0
+	for _, p := range sp.Want {
+		round += p.NextID
+	}
+	return round
 }
