@@ -231,3 +231,33 @@ func (b *Blockchain) IsFowardRumor(tlcStatus *message.StatusPacket) bool {
 	}
 	return false
 }
+
+func (b *Blockchain) IsInSync(tlcStatus *message.StatusPacket) bool {
+	b.TLCRoundVector.Lock.RLock()
+	defer b.TLCRoundVector.Lock.RUnlock()
+	// we use a map to compute the difference between arrays
+	m := make(map[string]bool)
+
+	// first pass : compute difference with peers contained in other peer statusVector
+	for _, status := range tlcStatus.Want {
+		m[status.Identifier] = true
+		next, found := b.TLCRoundVector.TLCRoundForPeer[status.Identifier]
+
+		if found {
+			if next > status.NextID {
+				return false
+			} else if next < status.NextID {
+				return false
+			}
+		} else if status.NextID > 0 {
+			return false
+		}
+	}
+	// second pass : add the peers that are only in this status vector but not in the other one.
+	for peer := range b.TLCRoundVector.TLCRoundForPeer {
+		if !m[peer] {
+			return false
+		}
+	}
+	return true
+}
