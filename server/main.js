@@ -64,7 +64,9 @@ $(document).ready(function() {
           "<br>" +
           "<strong> MESSAGE : </strong>" +
           val.Text;
-        items.push("<li id='" + key + "' class='msgItem'>" + str + "</li>");
+        items.push(
+          "<li id='" + key + "' class='msgItem'>" + text(str) + "</li>"
+        );
       });
 
       $(".msgList").html(items.join(""));
@@ -124,3 +126,7 @@ $(document).ready(function() {
 
   setInterval(update, 10000); //fetch messages every 10 second
 });
+
+function text(str) {
+  return $("<div>", { text: str }).text();
+}

@@ -15,7 +15,9 @@ $(document).ready(function() {
           "<br>" +
           "<strong> MESSAGE : </strong>" +
           val.Text;
-        items.push("<li id='" + key + "' class='msgItem'>" + str + "</li>");
+        items.push(
+          "<li id='" + key + "' class='msgItem'>" + text(str) + "</li>"
+        );
       });
 
       $(".msgList").html(items.join(""));
