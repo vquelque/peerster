@@ -24,17 +24,24 @@ type DownloadableFiles struct {
 	Lock         sync.RWMutex
 }
 
+type BlockchainUIStorage struct {
+	ConfirmedRumors []*message.TLCMessage
+	Lock            sync.RWMutex
+}
+
 type UIStorage struct {
-	RumorUIStorage    *RumorUIStorage
-	PrivateUIStorage  *PrivateUIStorage
-	DownloadableFiles *DownloadableFiles
+	RumorUIStorage      *RumorUIStorage
+	PrivateUIStorage    *PrivateUIStorage
+	DownloadableFiles   *DownloadableFiles
+	BlockchainUIStorage *BlockchainUIStorage
 }
 
 func NewUIStorage() *UIStorage {
 	rumorStorage := &RumorUIStorage{Rumors: make([]*message.RumorMessage, 0), Lock: sync.RWMutex{}}
 	privateStorage := &PrivateUIStorage{PrivateMsg: make(map[string][]message.PrivateMessage, 0), Lock: sync.RWMutex{}}
 	downloadableFiles := &DownloadableFiles{Downloadable: make(map[string]string, 0), Lock: sync.RWMutex{}}
-	return &UIStorage{RumorUIStorage: rumorStorage, PrivateUIStorage: privateStorage, DownloadableFiles: downloadableFiles}
+	blockchainUIStorage := &BlockchainUIStorage{ConfirmedRumors: make([]*message.TLCMessage, 0)}
+	return &UIStorage{RumorUIStorage: rumorStorage, PrivateUIStorage: privateStorage, DownloadableFiles: downloadableFiles, BlockchainUIStorage: blockchainUIStorage}
 }
 
 func (sto *UIStorage) AppendRumorAsync(rumor *message.RumorMessage) {
@@ -43,6 +50,15 @@ func (sto *UIStorage) AppendRumorAsync(rumor *message.RumorMessage) {
 		sto.RumorUIStorage.Lock.Lock()
 		defer sto.RumorUIStorage.Lock.Unlock()
 		sto.RumorUIStorage.Rumors = append(sto.RumorUIStorage.Rumors, rumor)
+	}()
+}
+
+func (sto *UIStorage) AppendConfirmedRumorAsync(tlc *message.TLCMessage) {
+	//append rumor if ui not reading => does not block main map
+	go func() {
+		sto.BlockchainUIStorage.Lock.Lock()
+		defer sto.BlockchainUIStorage.Lock.Unlock()
+		sto.BlockchainUIStorage.ConfirmedRumors = append(sto.BlockchainUIStorage.ConfirmedRumors, tlc)
 	}()
 }
 

@@ -45,6 +45,7 @@ func (gsp *Gossiper) processRumorPacket(pkt *message.RumorPacket, sender string)
 		}
 		if !rumor && pkt.TLCMessage.Confirmed > 0 {
 			// TLC Message
+			gsp.UIStorage.AppendConfirmedRumorAsync(pkt.TLCMessage)
 			gsp.Blockchain.Accept(pkt.TLCMessage)
 		}
 		if !rumor && pkt.TLCMessage.Confirmed == -1 && origin != gsp.Name {

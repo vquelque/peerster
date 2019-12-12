@@ -58,9 +58,9 @@ func msgHandler(gsp *gossiper.Gossiper) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "GET":
-			var rumorMessageList []*message.RumorMessage
-			rumorMessageList = gsp.UIStorage.GetAllRumors()
-			mmsgListJSON, err := json.Marshal(rumorMessageList)
+			gsp.UIStorage.RumorUIStorage.Lock.RLock()
+			mmsgListJSON, err := json.Marshal(gsp.UIStorage.RumorUIStorage.Rumors)
+			gsp.UIStorage.RumorUIStorage.Lock.RUnlock()
 			if err != nil {
 				return
 			}
@@ -119,8 +119,10 @@ func privateMsgHandler(gsp *gossiper.Gossiper) http.HandlerFunc {
 		switch r.Method {
 		case "GET":
 			peer := r.FormValue("peer")
-			m := gsp.UIStorage.GetPrivateMessagesForPeer(peer)
-			mJSON, err := json.Marshal(m)
+			gsp.UIStorage.PrivateUIStorage.Lock.RLock()
+			archive, _ := gsp.UIStorage.PrivateUIStorage.PrivateMsg[peer]
+			mJSON, err := json.Marshal(archive)
+			gsp.UIStorage.PrivateUIStorage.Lock.RUnlock()
 			if err != nil {
 				return
 			}
@@ -242,6 +244,23 @@ func searchResultsHandler(gsp *gossiper.Gossiper) http.HandlerFunc {
 	})
 }
 
+func confirmedRumorsHandler(gsp *gossiper.Gossiper) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "GET":
+			gsp.UIStorage.BlockchainUIStorage.Lock.RLock()
+			confirmedRumorsListJSON, err := json.Marshal(gsp.UIStorage.BlockchainUIStorage.ConfirmedRumors)
+			gsp.UIStorage.BlockchainUIStorage.Lock.RUnlock()
+			if err != nil {
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			w.Write(confirmedRumorsListJSON)
+		}
+	})
+}
+
 // StartUIServer starts the UI server
 func StartUIServer(UIPort int, gsp *gossiper.Gossiper) *http.Server {
 
@@ -257,6 +276,7 @@ func StartUIServer(UIPort int, gsp *gossiper.Gossiper) *http.Server {
 	mux.HandleFunc("/downloadFile", fileDownloadHandler(gsp))
 	mux.HandleFunc("/searchFile", fileSearchHandler(gsp))
 	mux.HandleFunc("/searchResults", searchResultsHandler(gsp))
+	mux.HandleFunc("/confirmedRumors", confirmedRumorsHandler(gsp))
 	server := &http.Server{Addr: UIPortStr, Handler: mux}
 	go func() {
 		if err := server.ListenAndServe(); err != nil {

@@ -71,6 +71,22 @@ $(document).ready(function() {
     });
   }
 
+  function confirmedRumors() {
+    $.getJSON("/confirmedRumors", function(data) {
+      var items = [];
+      $.each(data, function(key, val) {
+        var str =
+          "<strong> Confirmed </strong> " +
+          val.TxBlock.Transaction.Name +
+          " <strong> from </strong> " +
+          val.Origin;
+        items.push("<li id='" + key + "' class='msgItem'>" + str + "</li>");
+      });
+
+      $(".confirmedRumors").html(items.join(""));
+    });
+  }
+
   function downloadSearchedFile(metahash, filename) {
     $.post("/downloadFile", {
       metahash: metahash,
@@ -103,6 +119,7 @@ $(document).ready(function() {
     getContacts();
     getPeers();
     searchResults();
+    confirmedRumors();
   }
 
   setInterval(update, 10000); //fetch messages every 10 second

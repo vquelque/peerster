@@ -102,7 +102,6 @@ func (gsp *Gossiper) HandleBlockPublish(bp *message.BlockPublish, fitness float3
 				confirmedTLC := message.NewTLCMessage(gsp.Name, nextID, &TLC.TxBlock, int(TLC.ID), TLCStatusPkt, TLC.Fitness)
 				fmt.Printf("RE-BROADCAST ID %d WITNESSES %s\n", TLC.ID, strings.Join(acknowledged, ","))
 				gsp.processTLCMessage(confirmedTLC, "")
-				// TODO ADD RUMOR TO CONFIRMED RUMORS IN THE UI
 				return
 			}
 		case <-gsp.Blockchain.NextRound:
