@@ -48,6 +48,7 @@ func InitBlockchain(identifier string) *Blockchain {
 	pTLC := &PendingTLC{PendingTLC: make(map[utils.SHA256]*message.TLCMessage), PengindTLCForClock: make(map[uint32]*message.TLCMessage)}
 	pBlocks := &PendingBlocks{PendingBlocks: make([]*message.BlockPublish, 0), ConfirmedTLC: make(chan *message.TLCMessage)}
 	tRV := &TLCRoundVector{TLCRoundForPeer: make(map[string]uint32, 0), allowedForRound: true}
+	tRV.TLCRoundForPeer[identifier] = 1
 	nextRound := make(chan bool)
 	return &Blockchain{Blocks: blck, PendingTLC: pTLC, PendingBlocks: pBlocks, TLCRoundVector: tRV, NextRound: nextRound, identifier: identifier}
 }
@@ -117,10 +118,11 @@ func (b *Blockchain) IsValid(hash utils.SHA256) bool {
 
 func (b *Blockchain) TryAcceptTLC(tlc *message.TLCMessage) {
 	b.PendingTLC.Lock.Lock()
-	defer b.PendingTLC.Lock.Unlock()
 	id := b.IdForTLCVector(tlc.VectorClock)
 	b.PendingTLC.PengindTLCForClock[id] = tlc
-	// fmt.Printf("TRY ACCEPT THIS VEC : %v, OTHER VEC : %v\n", b.TLCRoundVector.TLCRoundForPeer, tlc.VectorClock)
+	fmt.Printf("TRY ACCEPT THIS VEC : %v, OTHER VEC : %v\n", b.TLCRoundVector.TLCRoundForPeer, tlc.VectorClock)
+	fmt.Printf("isInSync : %v \n", b.IsInSync(tlc.VectorClock))
+	b.PendingTLC.Lock.Unlock()
 	b.Accept(tlc)
 }
 
@@ -130,7 +132,6 @@ func (b *Blockchain) Accept(tlc *message.TLCMessage) {
 	b.PendingTLC.Lock.Lock()
 	defer b.PendingTLC.Lock.Unlock()
 	hash := tlc.TxBlock.Transaction.Hash()
-	fmt.Printf("PENDING : %s \n", b.PendingTLC.PendingTLC[hash])
 	if _, pending := b.PendingTLC.PendingTLC[hash]; pending {
 		fmt.Printf("ACCEPTING BLOCK WITH Hash : %x\n", hash)
 		select {
@@ -234,12 +235,12 @@ func (b *Blockchain) TLCRoundStatus() *message.StatusPacket {
 func (b *Blockchain) IsFowardRumor(tlcStatus *message.StatusPacket) bool {
 	b.TLCRoundVector.Lock.RLock()
 	defer b.TLCRoundVector.Lock.RUnlock()
-	if b.TLCRoundVector.TLCRoundForPeer[b.identifier] == 0 {
+	if b.TLCRoundVector.TLCRoundForPeer[b.identifier] == 1 {
 		return true
 	}
 	for _, round := range tlcStatus.Want {
 		if round.Identifier == b.identifier {
-			if round.NextID >= b.TLCRoundVector.TLCRoundForPeer[b.identifier] {
+			if round.NextID >= b.TLCRoundVector.TLCRoundForPeer[b.identifier]-1 {
 				return true
 			}
 		}
@@ -251,15 +252,15 @@ func (b *Blockchain) IsInSync(tlcStatus *message.StatusPacket) bool {
 	b.TLCRoundVector.Lock.RLock()
 	defer b.TLCRoundVector.Lock.RUnlock()
 	// we use a map to compute the difference between arrays
-	m := make(map[string]bool)
+	// m := make(map[string]bool)
 
 	// first pass : compute difference with peers contained in other peer statusVector
 	for _, status := range tlcStatus.Want {
-		m[status.Identifier] = true
+		// m[status.Identifier] = true
 		next, found := b.TLCRoundVector.TLCRoundForPeer[status.Identifier]
 
 		if found {
-			if next > status.NextID {
+			if next > status.NextID+1 {
 				return false
 			} else if next < status.NextID {
 				return false
@@ -267,13 +268,17 @@ func (b *Blockchain) IsInSync(tlcStatus *message.StatusPacket) bool {
 		} else if status.NextID > 0 {
 			return false
 		}
-	}
-	// second pass : add the peers that are only in this status vector but not in the other one.
-	for peer := range b.TLCRoundVector.TLCRoundForPeer {
-		if !m[peer] {
+
+		if !found {
 			return false
 		}
 	}
+	// second pass : add the peers that are only in this status vector but not in the other one.
+	// for peer := range b.TLCRoundVector.TLCRoundForPeer {
+	// 	if !m[peer] {
+	// 		return false
+	// 	}
+	// }
 	return true
 }
 

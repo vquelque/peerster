@@ -45,28 +45,16 @@ func (gsp *Gossiper) processRumorPacket(pkt *message.RumorPacket, sender string)
 		}
 		if !rumor && pkt.TLCMessage.Confirmed > 0 {
 			// TLC Message
+			gsp.Blockchain.TryAcceptTLC(pkt.TLCMessage)
 			gsp.UIStorage.AppendConfirmedRumorAsync(pkt.TLCMessage)
-			gsp.Blockchain.Accept(pkt.TLCMessage)
 		}
-		if !rumor && pkt.TLCMessage.Confirmed == -1 && origin != gsp.Name {
+		if !rumor && pkt.TLCMessage.Confirmed == -1 && gsp.Name != origin {
 			gsp.Blockchain.AdvanceRoundForPeer(origin)
 		}
 		if randPeer != "" {
 			gsp.rumormonger(pkt, randPeer)
 		}
 	}
-
-	// if !rumor && id <= gsp.VectorClock.NextTLCForPeer(origin) {
-	// 	//TLC Packet
-	// 	fmt.Println(gsp.Blockchain.IsPending(pkt.TLCMessage))
-	// 	if gsp.Blockchain.IsPending(pkt.TLCMessage) && pkt.TLCMessage.Confirmed {
-	// 		fmt.Println(pkt.String(origin))
-	// 		randPeer := gsp.Peers.PickRandomPeer(sender)
-	// 		if randPeer != "" {
-	// 			gsp.rumormonger(pkt, randPeer)
-	// 		}
-	// 	}
-	// }
 
 	// acknowledge the packet if not sent by client
 	if sender != "" {
