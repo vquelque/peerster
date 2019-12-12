@@ -82,6 +82,40 @@ func msgHandler(gsp *gossiper.Gossiper) http.HandlerFunc {
 	})
 }
 
+func proofForRoundHandler(gsp *gossiper.Gossiper) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "GET":
+			gsp.UIStorage.BlockchainUIStorage.Lock.RLock()
+			proofsForRound, err := json.Marshal(gsp.UIStorage.BlockchainUIStorage.ProofForRound)
+			gsp.UIStorage.BlockchainUIStorage.Lock.RUnlock()
+			if err != nil {
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			w.Write(proofsForRound)
+		}
+	})
+}
+
+func roundNumberHandler(gsp *gossiper.Gossiper) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "GET":
+			gsp.UIStorage.BlockchainUIStorage.Lock.RLock()
+			roundNumber, err := json.Marshal(gsp.UIStorage.BlockchainUIStorage.RoundNumber)
+			gsp.UIStorage.BlockchainUIStorage.Lock.RUnlock()
+			if err != nil {
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			w.Write(roundNumber)
+		}
+	})
+}
+
 func idHandler(gsp *gossiper.Gossiper) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -277,6 +311,8 @@ func StartUIServer(UIPort int, gsp *gossiper.Gossiper) *http.Server {
 	mux.HandleFunc("/searchFile", fileSearchHandler(gsp))
 	mux.HandleFunc("/searchResults", searchResultsHandler(gsp))
 	mux.HandleFunc("/confirmedRumors", confirmedRumorsHandler(gsp))
+	mux.HandleFunc("/roundNumber", roundNumberHandler(gsp))
+	mux.HandleFunc("/proofsForRound", proofForRoundHandler(gsp))
 	server := &http.Server{Addr: UIPortStr, Handler: mux}
 	go func() {
 		if err := server.ListenAndServe(); err != nil {

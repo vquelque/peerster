@@ -38,6 +38,7 @@ func (gsp *Gossiper) StartTLCRoundHandler() {
 					gsp.Blockchain.ResetAllowedForRound()
 					gsp.Blockchain.AdvanceRoundForPeer(gsp.Name)
 					fmt.Printf("ADVANCING TO round ​%d BASED ON CONFIRMED MESSAGES %s\n", gsp.Blockchain.GetRoundForPeer(gsp.Name), ProofsForRound(TLCProofsForRound))
+					gsp.UIStorage.AppendProofsForRoundAsync(TLCProofsForRound, gsp.Blockchain.GetRoundForPeer(gsp.Name))
 					TLCProofsForRound = make([]*message.TLCMessage, 0)
 					select {
 					//non blocking

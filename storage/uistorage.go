@@ -26,6 +26,8 @@ type DownloadableFiles struct {
 
 type BlockchainUIStorage struct {
 	ConfirmedRumors []*message.TLCMessage
+	ProofForRound   []string
+	RoundNumber     uint32
 	Lock            sync.RWMutex
 }
 
@@ -40,7 +42,7 @@ func NewUIStorage() *UIStorage {
 	rumorStorage := &RumorUIStorage{Rumors: make([]*message.RumorMessage, 0), Lock: sync.RWMutex{}}
 	privateStorage := &PrivateUIStorage{PrivateMsg: make(map[string][]message.PrivateMessage, 0), Lock: sync.RWMutex{}}
 	downloadableFiles := &DownloadableFiles{Downloadable: make(map[string]string, 0), Lock: sync.RWMutex{}}
-	blockchainUIStorage := &BlockchainUIStorage{ConfirmedRumors: make([]*message.TLCMessage, 0)}
+	blockchainUIStorage := &BlockchainUIStorage{ConfirmedRumors: make([]*message.TLCMessage, 0), ProofForRound: make([]string, 0)}
 	return &UIStorage{RumorUIStorage: rumorStorage, PrivateUIStorage: privateStorage, DownloadableFiles: downloadableFiles, BlockchainUIStorage: blockchainUIStorage}
 }
 
@@ -96,4 +98,16 @@ func (sto *UIStorage) RemoveDownloadableFile(metahash utils.SHA256) {
 	sto.DownloadableFiles.Lock.Lock()
 	defer sto.DownloadableFiles.Lock.Unlock()
 	delete(sto.DownloadableFiles.Downloadable, fmt.Sprint(metahash))
+}
+
+func (sto *UIStorage) AppendProofsForRoundAsync(proofs []*message.TLCMessage, rNumber uint32) {
+	//append rumor if ui not reading => does not block main map
+	go func() {
+		sto.BlockchainUIStorage.Lock.Lock()
+		defer sto.BlockchainUIStorage.Lock.Unlock()
+		sto.BlockchainUIStorage.RoundNumber = rNumber
+		for _, p := range proofs {
+			sto.BlockchainUIStorage.ProofForRound = append(sto.BlockchainUIStorage.ProofForRound, p.Origin)
+		}
+	}()
 }

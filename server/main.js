@@ -1,6 +1,6 @@
 $(document).ready(function() {
   $.getJSON("/id", function(data) {
-    $("#peerID").html(data);
+    $("#peerID").text(data);
   });
   update();
 
@@ -116,15 +116,31 @@ $(document).ready(function() {
     });
   }
 
+  function fetchBlockchainStatus() {
+    $.getJSON("/roundNumber", function(data) {
+      $(".roundNumber").text(data);
+    });
+    $.getJSON("/proofsForRound", function(data) {
+      var items = [];
+      $.each(data, function(key, val) {
+        items.push(
+          "<li class='searchResultItem' id='" + key + "'>" + val + "</li>"
+        );
+      });
+      $(".proofsForRound").html(items.join(""));
+    });
+  }
+
   function update() {
     fetchMessages();
     getContacts();
     getPeers();
     searchResults();
     confirmedRumors();
+    fetchBlockchainStatus();
   }
 
-  setInterval(update, 10000); //fetch messages every 10 second
+  setInterval(update, 5000); //fetch messages every 5 seconds
 });
 
 function text(str) {
